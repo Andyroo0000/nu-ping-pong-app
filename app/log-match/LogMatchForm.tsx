@@ -135,7 +135,17 @@ export function LogMatchForm() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-bg px-6 pb-10">
-      <div className="flex items-center justify-between py-5">
+      <div className="flex items-center gap-3 py-5">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="Go back"
+          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-2"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
         <div className="text-lg font-bold">Log Match</div>
       </div>
 
