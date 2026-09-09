@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
 import { ChatSkeleton } from "@/components/Skeletons";
+import { OnlineAvatarWrapper, OnlineLabel } from "@/components/OnlineDot";
 import { ChatRoom } from "./ChatRoom";
 import { displayName } from "@/lib/names";
 
@@ -64,15 +65,17 @@ async function ChatHeader({ params }: { params: Params }) {
   return (
     <header className="flex items-center gap-3 border-b border-border bg-bg-alt px-4 py-3">
       <BackLink />
-      <Avatar player={other ?? { username: channel.title ?? "?", full_name: null }} size={36} />
+      <OnlineAvatarWrapper userId={other?.id} dotSize={11}>
+        <Avatar player={other ?? { username: channel.title ?? "?", full_name: null }} size={36} />
+      </OnlineAvatarWrapper>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold">
           {other ? displayName(other) : (channel.title ?? "Conversation")}
         </div>
         {other && (
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-text-faint">
-            {other.rating.toLocaleString()}
-            <TierBadge rating={other.rating} />
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <TierBadge rating={other.rating} size="sm" short />
+            <OnlineLabel userId={other.id} />
           </div>
         )}
       </div>

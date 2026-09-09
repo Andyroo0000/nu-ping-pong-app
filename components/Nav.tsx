@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Wordmark } from "@/components/HuskyMark";
 import { SignOutButton } from "@/components/SignOutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { OnlineCount } from "@/components/OnlineDot";
 
 export async function Nav() {
   // getCurrentUser is request-cached, so this reuses the lookup the page
@@ -38,6 +40,7 @@ export async function Nav() {
         <NavLink href="/chats" badge={unread}>
           Chats
         </NavLink>
+        <OnlineCount />
       </div>
       <div className="flex items-center gap-4">
         {/* On narrow screens the section links collapse; chats still needs to
@@ -54,6 +57,7 @@ export async function Nav() {
             My Profile
           </Link>
         )}
+        <ThemeToggle />
         <SignOutButton />
       </div>
     </div>

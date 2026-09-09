@@ -47,7 +47,7 @@ export default function LandingPage() {
             <h1 className="font-display text-6xl font-bold leading-[1.03] tracking-tight sm:text-7xl">
               Every rally
               <br />
-              <span className="text-nu">counts.</span>
+              <span className="text-nu-accent">counts.</span>
             </h1>
             <p className="max-w-md text-lg leading-relaxed text-text-dim">
               Log your matches, climb the ladder, and find your next opponent — an
@@ -67,9 +67,9 @@ export default function LandingPage() {
           </div>
 
           <div className="flex justify-center">
-            <div className="w-full max-w-[340px] rounded-[20px] border border-border-strong bg-white p-7 shadow-[0_30px_60px_-20px_oklch(0%_0%_0%_/_0.18)]">
+            <div className="w-full max-w-[340px] rounded-[20px] border border-border-strong bg-bg p-7 shadow-[0_30px_60px_-20px_oklch(0%_0%_0%_/_0.18)] dark:shadow-none">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-nu bg-nu-wash font-display text-lg font-bold text-nu">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-nu bg-nu-wash font-display text-lg font-bold text-nu-accent">
                   JP
                 </div>
                 <div>
@@ -80,7 +80,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className="mt-5">
-                <div className="font-display text-5xl font-bold tracking-tight text-nu">1,742</div>
+                <div className="font-display text-5xl font-bold tracking-tight text-nu-accent">1,742</div>
                 <div className="text-[13px] font-semibold text-text-faint">Rank #12 overall</div>
               </div>
               <svg className="mt-4" width="100%" height="70" viewBox="0 0 284 70" fill="none">

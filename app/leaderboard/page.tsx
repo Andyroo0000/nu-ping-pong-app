@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { NetRule } from "@/components/NetRule";
+import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { Avatar } from "@/components/Avatar";
 import { LadderSkeleton, NavSkeleton } from "@/components/Skeletons";
 import { displayName } from "@/lib/names";
@@ -65,7 +66,9 @@ async function Ladder() {
             }`}
           >
             <RankNumber rank={i + 1} />
-            <Avatar player={p} size={40} />
+            <OnlineAvatarWrapper userId={p.id}>
+              <Avatar player={p} size={40} />
+            </OnlineAvatarWrapper>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold">{displayName(p)}</div>
               <TierBadge rating={p.rating} size="sm" short className="mt-1" />
@@ -73,7 +76,7 @@ async function Ladder() {
             <div className="shrink-0 text-right">
               <div
                 className={`font-display text-base font-bold ${
-                  p.id === user?.id ? "text-nu" : ""
+                  p.id === user?.id ? "text-nu-accent" : ""
                 }`}
               >
                 {p.rating.toLocaleString()}
@@ -87,11 +90,11 @@ async function Ladder() {
       </div>
 
       {user && me && (
-        <div className="sticky bottom-6 mt-8 flex items-center gap-3 rounded-2xl border-2 border-nu bg-bg p-4 shadow-[0_10px_30px_-12px_rgba(200,16,46,0.4)]">
+        <div className="sticky bottom-6 mt-8 flex items-center gap-3 rounded-2xl border-2 border-nu bg-bg p-4 shadow-(--card-shadow)">
           <RankNumber rank={myIndex + 1} />
           <div className="flex-1 text-sm font-bold">Your rank</div>
           <TierBadge rating={me.rating} size="sm" short />
-          <div className="font-display text-base font-bold text-nu">
+          <div className="font-display text-base font-bold text-nu-accent">
             {me.rating.toLocaleString()}
           </div>
         </div>
@@ -106,7 +109,7 @@ function RankNumber({ rank }: { rank: number }) {
   return (
     <div
       className={`flex w-6 shrink-0 justify-center font-display text-sm font-bold ${
-        podium ? "text-nu" : "text-text-faint"
+        podium ? "text-nu-accent" : "text-text-faint"
       }`}
     >
       {rank}

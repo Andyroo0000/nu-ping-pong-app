@@ -25,7 +25,7 @@ export function Wordmark({ size = 28, className = "" }: { size?: number; classNa
     <span className={`flex items-center gap-2.5 ${className}`}>
       <HuskyMark size={size} />
       <span className="font-display text-base font-bold leading-none tracking-tight">
-        NU <span className="text-nu">Ping Pong</span>
+        NU <span className="text-nu-accent">Ping Pong</span>
       </span>
     </span>
   );

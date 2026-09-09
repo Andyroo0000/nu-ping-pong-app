@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
 import { NetRule } from "@/components/NetRule";
+import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { displayName } from "@/lib/names";
 import { relativeTime } from "@/lib/time";
 
@@ -117,7 +118,9 @@ async function ChannelList() {
             href={`/chats/${channel.id}`}
             className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 hover:border-border-strong"
           >
-            <Avatar player={other ?? { username: title, full_name: null }} size={42} />
+            <OnlineAvatarWrapper userId={members[0]?.user_id}>
+              <Avatar player={other ?? { username: title, full_name: null }} size={42} />
+            </OnlineAvatarWrapper>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <div className="truncate text-sm font-bold">{title}</div>

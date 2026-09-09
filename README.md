@@ -105,6 +105,14 @@ any `@northeastern.edu` email and a password.
 - **Challenges** (`send_challenge`) invite a specific player instead. They
   accept or decline from their own matchmaking page, and mutual challenges
   auto-accept rather than leaving two mirrored invitations hanging.
+- **Who's online** ([`components/PresenceProvider.tsx`](components/PresenceProvider.tsx))
+  — a green dot on anyone with the app open, plus a count in the nav. Built on
+  Supabase Realtime Presence, so it costs **no database reads or writes and no
+  polling**: everyone joins one shared channel and the Realtime server
+  broadcasts the roster when it changes. Close the tab and the dot goes out a
+  moment later, with nothing to clean up. The trade is that presence is
+  in-memory only, so it can't answer "when were they last here" — that would
+  need a `last_seen_at` column and a heartbeat.
 - **Chat** (`app/chats`) — accepting a challenge or getting paired opens a
   two-person channel. Live via Supabase Realtime on `public.messages`, with a
   slow poll as a fallback. A new channel opens with a system message and a few
@@ -122,9 +130,25 @@ notices, but it stops the palette reading as the default grey-on-grey it
 started as. White on red and red on white are both 5.9:1, clearing WCAG AA
 for body text.
 
-Tokens live in [`app/globals.css`](app/globals.css); use the `nu`, `nu-deep`,
-`nu-bright`, `nu-wash` and `nu-line` Tailwind colours rather than hardcoding
-hexes.
+Tokens live in [`app/globals.css`](app/globals.css); use the Tailwind colours
+rather than hardcoding hexes.
+
+**Red is two tokens on purpose, and mixing them up is the easy mistake:**
+
+| Token | Use for | Why |
+| --- | --- | --- |
+| `bg-nu` | Fills — buttons, badges | White text sits on it, so it has to stay dark. 5.9:1 in both themes. |
+| `text-nu-accent` | Red *type* and icons | On a dark background `#c8102e` only manages 3.1:1, so dark mode lightens this one to clear AA while the fill stays put. |
+
+**Dark mode** is a single `.dark` block. An inline script in the layout resolves
+"system" against `prefers-color-scheme` and puts an explicit `dark` or `light`
+class on `<html>` *before first paint* — without it, dark-mode visitors get a
+white flash on every cold load, since the server can't know their preference.
+Because the class is always explicit, Tailwind's `dark:` variant keys off it
+(`@custom-variant` at the top of the stylesheet) and `ThemeToggle` needs no
+React state at all: it reads the class on click, and both icons are swapped in
+CSS. All six tier colours have dark variants — tier 6 inverts from near-black
+to near-white, still the rarest-looking of the six.
 
 **Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
 each of the six tiers its own accent, a paddle in that colour, and one pip per
@@ -231,5 +255,11 @@ user id. To make them members-only, flip the bucket to private and switch
 - No members directory — the leaderboard is the only way to browse people, and
   it's sorted by rating, which isn't the friendliest front door for someone
   who's here casually.
+- No notifications of any kind. A challenge or a message only surfaces as a
+  nav badge next time you open the app, which is the biggest gap for something
+  meant to get people playing.
+- Singles only — no doubles, and no tournament brackets.
+- Presence shows "online now" but never "last seen", so an empty club looks
+  identical whether everyone left an hour ago or a week ago.
 - The queue is a flat list — no per-table or per-time-slot scheduling, and
   no way to say when you'll arrive (only that you're there now).

@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { TierProgress } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
+import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
 import { displayName } from "@/lib/names";
 import { availabilityLabels, playPreferenceLabel, yearLabel } from "@/lib/profile";
@@ -103,14 +104,16 @@ async function ProfileBody({ params }: { params: Params }) {
   return (
     <div className="mx-auto max-w-md px-6 py-10">
         <div className="flex flex-col items-center text-center">
-          <Avatar
-            player={profile}
-            size={80}
-            className="border-[3px] border-nu font-display text-2xl"
-          />
+          <OnlineAvatarWrapper userId={profile.id} dotSize={16}>
+            <Avatar
+              player={profile}
+              size={80}
+              className="border-[3px] border-nu font-display text-2xl"
+            />
+          </OnlineAvatarWrapper>
           <div className="mt-3 text-xl font-bold">{displayName(profile)}</div>
           <div className="text-sm font-semibold text-text-faint">@{profile.username}</div>
-          <div className="mt-3 font-display text-5xl font-bold tracking-tight text-nu">
+          <div className="mt-3 font-display text-5xl font-bold tracking-tight text-nu-accent">
             {profile.rating.toLocaleString()}
           </div>
           <div className="text-sm font-semibold text-text-faint">

@@ -9,6 +9,7 @@ import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
 import { NetRule } from "@/components/NetRule";
+import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { MatchmakingForm } from "./MatchmakingForm";
 import { displayName } from "@/lib/names";
@@ -101,7 +102,7 @@ async function RatingCard() {
     <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
       <div className="text-xs font-bold text-text-faint">YOUR RATING</div>
       <div className="mt-0.5 flex flex-wrap items-center gap-2">
-        <span className="font-display text-2xl font-bold text-nu">
+        <span className="font-display text-2xl font-bold text-nu-accent">
           {myRating.toLocaleString()}
         </span>
         <TierBadge rating={myRating} />
@@ -384,7 +385,9 @@ function Row({
   const name = player ? displayName(player) : "Unknown player";
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3">
-      <Avatar player={player ?? { username: "?", full_name: null }} size={42} />
+      <OnlineAvatarWrapper userId={player?.id}>
+        <Avatar player={player ?? { username: "?", full_name: null }} size={42} />
+      </OnlineAvatarWrapper>
       <div className="min-w-0 flex-1">
         {player?.username ? (
           <Link

@@ -1,21 +1,32 @@
 @import "tailwindcss";
 
+/* The inline theme script always sets an explicit class, so `dark:` keys off
+   that rather than the media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
   Northeastern red (#C8102E) carries the brand; everything else stays quiet so
   it means something when red shows up. Red is for primary actions, the top
   tiers, live indicators, and the mark — not for chrome.
 
-  Surfaces sit a hair off pure grey, warmed toward the red hue. It's subtle
-  enough that nobody notices it directly, but it stops the neutrals reading as
-  the default grey-on-grey they were before.
+  Red is deliberately two tokens, because one can't do both jobs:
 
-  White on --nu-red is 5.9:1 and red on white is the same, so both clear WCAG
-  AA for body text.
+    --nu-red     fill colour. White text sits on top of it, so it has to stay
+                 dark. 5.9:1 against white in both themes.
+    --nu-accent  red *text* and icons on the page background. On a dark
+                 background #C8102E only manages 3.1:1, so dark mode lightens
+                 this one to clear 4.5:1 while the fill stays put.
+
+  Use `bg-nu` for fills and `text-nu-accent` for type. Mixing them up is how
+  you end up with red text nobody can read at night.
 */
 :root {
+  color-scheme: light;
+
   --nu-red: #c8102e;
   --nu-red-deep: #9e0c24;
   --nu-red-bright: #e11b3c;
+  --nu-accent: #c8102e;
   --nu-red-wash: #fdf1f3;
   --nu-red-line: #f3cdd4;
 
@@ -30,10 +41,13 @@
   --text-dim: oklch(40% 0.008 25);
   --text-faint: oklch(58% 0.007 25);
 
-  /* "ink" is the near-black used for text-weight surfaces and buttons. */
+  /* "ink" is the near-black used for text-weight surfaces. */
   --ink: oklch(14% 0.006 25);
-  --ink-bright: var(--nu-red);
+  --ink-bright: var(--nu-accent);
   --ink-dim: var(--nu-red-wash);
+
+  /* Online-now indicator. Green reads as "available" everywhere. */
+  --live: #16a34a;
 
   /* Tier accents: grey → bronze → steel → gold → NU red → black. */
   --tier-1: #78716c;
@@ -42,6 +56,47 @@
   --tier-4: #b8891b;
   --tier-5: var(--nu-red);
   --tier-6: #17151c;
+
+  --card-shadow: 0 10px 30px -12px oklch(45% 0.2 25 / 0.4);
+}
+
+/*
+  Dark theme. The inline script in the layout resolves "system" against
+  prefers-color-scheme and puts an explicit `dark` or `light` class on <html>
+  before first paint, so this one block covers every case and there's no white
+  flash on load.
+*/
+.dark {
+  color-scheme: dark;
+
+  --nu-accent: #ff7286;
+  --nu-red-wash: oklch(28% 0.07 20);
+  --nu-red-line: oklch(42% 0.11 22);
+
+  --bg: oklch(17% 0.008 25);
+  --bg-alt: oklch(20.5% 0.01 25);
+  --surface: oklch(22% 0.011 25);
+  --surface-2: oklch(27.5% 0.014 25);
+  --border: oklch(96% 0.01 25 / 0.13);
+  --border-strong: oklch(96% 0.01 25 / 0.28);
+
+  --text: oklch(96% 0.004 25);
+  --text-dim: oklch(77% 0.007 25);
+  --text-faint: oklch(61% 0.009 25);
+
+  --ink: oklch(92% 0.006 25);
+  --ink-dim: var(--nu-red-wash);
+
+  --live: #4ade80;
+
+  --tier-1: #a8a29e;
+  --tier-2: #dd9c4f;
+  --tier-3: #a6bcd4;
+  --tier-4: #e5c05c;
+  --tier-5: #ff7286;
+  --tier-6: #f2f0f7;
+
+  --card-shadow: 0 10px 30px -12px oklch(60% 0.2 25 / 0.35);
 }
 
 @theme inline {
@@ -61,8 +116,10 @@
   --color-nu: var(--nu-red);
   --color-nu-deep: var(--nu-red-deep);
   --color-nu-bright: var(--nu-red-bright);
+  --color-nu-accent: var(--nu-accent);
   --color-nu-wash: var(--nu-red-wash);
   --color-nu-line: var(--nu-red-line);
+  --color-live: var(--live);
 
   --font-display: var(--font-space-grotesk);
   --font-sans: var(--font-manrope);
@@ -86,8 +143,18 @@ body {
 /* Faint ball-and-trajectory texture for large empty areas like the hero. */
 .table-glow {
   background:
-    radial-gradient(circle at 82% 12%, color-mix(in oklab, var(--nu-red) 9%, transparent), transparent 42%),
-    radial-gradient(circle at 12% 88%, color-mix(in oklab, var(--nu-red) 5%, transparent), transparent 46%);
+    radial-gradient(circle at 82% 12%, color-mix(in oklab, var(--nu-accent) 9%, transparent), transparent 42%),
+    radial-gradient(circle at 12% 88%, color-mix(in oklab, var(--nu-accent) 5%, transparent), transparent 46%);
+}
+
+/* Soft pulse on the online-now dot. */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.live-dot {
+  animation: live-pulse 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

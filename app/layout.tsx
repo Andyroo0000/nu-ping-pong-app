@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
+import { THEME_SCRIPT } from "@/components/ThemeToggle";
+import { PresenceProvider } from "@/components/PresenceProvider";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -24,9 +26,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Resolves the theme before first paint so dark mode doesn't flash
+            white on every cold load. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className={`${spaceGrotesk.variable} ${manrope.variable} font-sans antialiased`}>
-        {children}
+        <PresenceProvider>{children}</PresenceProvider>
       </body>
     </html>
   );
