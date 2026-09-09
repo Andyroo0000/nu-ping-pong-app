@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
+import { NetRule } from "@/components/NetRule";
 import { Avatar } from "@/components/Avatar";
 import { LadderSkeleton, NavSkeleton } from "@/components/Skeletons";
 import { displayName } from "@/lib/names";
@@ -19,6 +20,7 @@ export default function LeaderboardPage() {
       </Suspense>
       <div className="mx-auto max-w-2xl px-6 py-10">
         <h1 className="font-display text-3xl font-bold">Leaderboard</h1>
+        <NetRule className="mt-4" />
         <Suspense fallback={<LadderSkeleton />}>
           <Ladder />
         </Suspense>
@@ -58,18 +60,24 @@ async function Ladder() {
           <Link
             key={p.id}
             href={`/profile/${p.username}`}
-            className={`flex items-center gap-4 border-b border-border py-3 ${
-              p.id === user?.id ? "bg-surface-2" : ""
+            className={`flex items-center gap-4 border-b border-border py-3 transition-colors hover:bg-surface ${
+              p.id === user?.id ? "-mx-3 rounded-xl border-b-0 bg-nu-wash px-3 ring-1 ring-nu-line" : ""
             }`}
           >
-            <div className="w-6 shrink-0 text-sm font-bold text-text-faint">{i + 1}</div>
+            <RankNumber rank={i + 1} />
             <Avatar player={p} size={40} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold">{displayName(p)}</div>
-              <TierBadge rating={p.rating} className="mt-1" />
+              <TierBadge rating={p.rating} size="sm" short className="mt-1" />
             </div>
             <div className="shrink-0 text-right">
-              <div className="font-display text-base font-bold">{p.rating.toLocaleString()}</div>
+              <div
+                className={`font-display text-base font-bold ${
+                  p.id === user?.id ? "text-nu" : ""
+                }`}
+              >
+                {p.rating.toLocaleString()}
+              </div>
               <div className="text-xs font-semibold text-text-faint">
                 {p.wins}W–{p.losses}L
               </div>
@@ -79,12 +87,29 @@ async function Ladder() {
       </div>
 
       {user && me && (
-        <div className="sticky bottom-6 mt-8 flex items-center gap-3 rounded-2xl border border-ink bg-surface-2 p-4">
-          <div className="w-6 shrink-0 text-sm font-bold text-ink">{myIndex + 1}</div>
+        <div className="sticky bottom-6 mt-8 flex items-center gap-3 rounded-2xl border-2 border-nu bg-bg p-4 shadow-[0_10px_30px_-12px_rgba(200,16,46,0.4)]">
+          <RankNumber rank={myIndex + 1} />
           <div className="flex-1 text-sm font-bold">Your rank</div>
-          <div className="font-display text-base font-bold">{me.rating.toLocaleString()}</div>
+          <TierBadge rating={me.rating} size="sm" short />
+          <div className="font-display text-base font-bold text-nu">
+            {me.rating.toLocaleString()}
+          </div>
         </div>
       )}
     </>
+  );
+}
+
+/** Top three get the school colour; everyone else stays quiet. */
+function RankNumber({ rank }: { rank: number }) {
+  const podium = rank <= 3;
+  return (
+    <div
+      className={`flex w-6 shrink-0 justify-center font-display text-sm font-bold ${
+        podium ? "text-nu" : "text-text-faint"
+      }`}
+    >
+      {rank}
+    </div>
   );
 }

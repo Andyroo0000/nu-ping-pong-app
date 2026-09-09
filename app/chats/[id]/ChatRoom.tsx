@@ -200,7 +200,7 @@ export function ChatRoom({
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-full bg-nu transition-colors hover:bg-nu-deep px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
           >
             Send
           </button>

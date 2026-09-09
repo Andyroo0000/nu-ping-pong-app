@@ -319,7 +319,7 @@ export function LogMatchForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full rounded-xl bg-ink py-4 text-[15px] font-bold text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-nu transition-colors hover:bg-nu-deep py-4 text-[15px] font-bold text-white disabled:opacity-50"
           >
             {isPending ? "Sending…" : "Send for Confirmation"}
           </button>

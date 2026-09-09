@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
+import { NetRule } from "@/components/NetRule";
 import { displayName } from "@/lib/names";
 import { relativeTime } from "@/lib/time";
 
@@ -26,6 +27,7 @@ export default function ChatsPage() {
         <p className="mt-1 text-sm text-text-dim">
           A channel opens automatically whenever a challenge is accepted.
         </p>
+        <NetRule className="mt-4" />
         <div className="mt-7">
           <Suspense fallback={<RowsSkeleton rows={3} />}>
             <ChannelList />
@@ -92,7 +94,7 @@ async function ChannelList() {
         </p>
         <Link
           href="/matchmaking"
-          className="mt-4 inline-block rounded-xl bg-ink px-5 py-3 text-sm font-bold text-white"
+          className="mt-4 inline-block rounded-xl bg-nu transition-colors hover:bg-nu-deep px-5 py-3 text-sm font-bold text-white"
         >
           Find a match
         </Link>
@@ -128,7 +130,7 @@ async function ChannelList() {
               </div>
             </div>
             {count > 0 && (
-              <div className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-bold text-white">
+              <div className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-nu transition-colors hover:bg-nu-deep px-1.5 text-[11px] font-bold text-white">
                 {count > 99 ? "99+" : count}
               </div>
             )}

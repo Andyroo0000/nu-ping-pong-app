@@ -8,7 +8,7 @@ function Shimmer({ className = "" }: { className?: string }) {
 
 export function NavSkeleton() {
   return (
-    <div className="flex items-center justify-between border-b border-border bg-bg-alt px-6 py-4">
+    <div className="flex items-center justify-between border-b-2 border-nu bg-bg-alt px-6 py-4">
       <div className="flex items-center gap-3">
         <Shimmer className="h-7 w-7 rounded-full" />
         <Shimmer className="h-4 w-32" />

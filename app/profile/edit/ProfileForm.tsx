@@ -186,7 +186,7 @@ function AvatarField({ profile }: { profile: Profile }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap gap-2">
           <label
-            className={`cursor-pointer rounded-xl bg-ink px-4 py-2.5 text-[13px] font-bold text-white ${
+            className={`cursor-pointer rounded-xl bg-nu transition-colors hover:bg-nu-deep px-4 py-2.5 text-[13px] font-bold text-white ${
               busy ? "opacity-50" : ""
             }`}
           >
@@ -288,7 +288,7 @@ function SaveButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-ink py-3.5 text-sm font-bold text-white disabled:opacity-50"
+      className="rounded-xl bg-nu transition-colors hover:bg-nu-deep py-3.5 text-sm font-bold text-white disabled:opacity-50"
     >
       {pending ? "Saving…" : "Save profile"}
     </button>

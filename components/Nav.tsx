@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import { HuskyMark } from "@/components/HuskyMark";
+import { Wordmark } from "@/components/HuskyMark";
 import { SignOutButton } from "@/components/SignOutButton";
 
 export async function Nav() {
@@ -26,10 +26,9 @@ export async function Nav() {
   }
 
   return (
-    <div className="flex items-center justify-between border-b border-border bg-bg-alt px-6 py-4">
-      <Link href="/leaderboard" className="flex items-center gap-3">
-        <HuskyMark size={28} />
-        <span className="font-display text-base font-bold tracking-tight">NU Ping Pong</span>
+    <div className="flex items-center justify-between border-b-2 border-nu bg-bg-alt px-6 py-4">
+      <Link href="/leaderboard">
+        <Wordmark size={28} />
       </Link>
       <div className="hidden items-center gap-8 sm:flex">
         <NavLink href="/leaderboard">Leaderboard</NavLink>
@@ -77,7 +76,7 @@ function NavLink({
     >
       {children}
       {badge > 0 && (
-        <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[11px] font-bold text-white">
+        <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-nu px-1 text-[11px] font-bold text-white">
           {badge > 9 ? "9+" : badge}
         </span>
       )}
@@ -87,6 +86,6 @@ function NavLink({
 
 function Dot() {
   return (
-    <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-ink" aria-hidden />
+    <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-nu" aria-hidden />
   );
 }

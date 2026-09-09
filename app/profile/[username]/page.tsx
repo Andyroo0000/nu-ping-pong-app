@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
-import { TierBadge } from "@/components/TierBadge";
+import { TierProgress } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
@@ -106,17 +106,21 @@ async function ProfileBody({ params }: { params: Params }) {
           <Avatar
             player={profile}
             size={80}
-            className="border-[3px] border-ink-bright font-display text-2xl"
+            className="border-[3px] border-nu font-display text-2xl"
           />
           <div className="mt-3 text-xl font-bold">{displayName(profile)}</div>
           <div className="text-sm font-semibold text-text-faint">@{profile.username}</div>
-          <TierBadge rating={profile.rating} className="mt-3" />
-          <div className="mt-3 font-display text-5xl font-bold tracking-tight">
+          <div className="mt-3 font-display text-5xl font-bold tracking-tight text-nu">
             {profile.rating.toLocaleString()}
           </div>
           <div className="text-sm font-semibold text-text-faint">
             Rank #{(rank ?? 0) + 1} overall
           </div>
+
+          <TierProgress
+            rating={profile.rating}
+            className="mt-5 w-full rounded-2xl border border-border bg-surface p-4 text-left"
+          />
 
           <div className="mt-3 flex flex-wrap justify-center gap-1.5">
             <Chip>{playPreferenceLabel(profile.play_preference)}</Chip>
@@ -178,7 +182,7 @@ async function ProfileBody({ params }: { params: Params }) {
                   <div className="mt-3 flex gap-2">
                     <form action={confirmMatch} className="flex-1">
                       <input type="hidden" name="matchId" value={m.id} />
-                      <button className="w-full rounded-lg bg-ink py-2 text-sm font-bold text-white">
+                      <button className="w-full rounded-lg bg-nu transition-colors hover:bg-nu-deep py-2 text-sm font-bold text-white">
                         Confirm
                       </button>
                     </form>
@@ -251,7 +255,7 @@ async function ProfileBody({ params }: { params: Params }) {
           <div className="mt-8 flex gap-2.5">
             <Link
               href="/log-match"
-              className="flex-1 rounded-xl bg-ink py-3.5 text-center text-sm font-bold text-white"
+              className="flex-1 rounded-xl bg-nu transition-colors hover:bg-nu-deep py-3.5 text-center text-sm font-bold text-white"
             >
               Log a Match
             </Link>

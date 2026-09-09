@@ -112,6 +112,42 @@ any `@northeastern.edu` email and a password.
   each other start talking. Unread counts come from `unread_summary()` and
   show in the nav.
 
+### Look and feel
+
+Northeastern red (`#c8102e`) carries the brand and everything else stays
+quiet, so red means something when it appears: primary actions, the top two
+tiers, live indicators, unread badges, and the mark. Neutral surfaces sit a
+hair off pure grey, warmed toward the red hue — subtle enough that nobody
+notices, but it stops the palette reading as the default grey-on-grey it
+started as. White on red and red on white are both 5.9:1, clearing WCAG AA
+for body text.
+
+Tokens live in [`app/globals.css`](app/globals.css); use the `nu`, `nu-deep`,
+`nu-bright`, `nu-wash` and `nu-line` Tailwind colours rather than hardcoding
+hexes.
+
+**Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
+each of the six tiers its own accent, a paddle in that colour, and one pip per
+level, so tiers are told apart at a glance and climbing one looks like
+something. The ramp runs grey → bronze → steel → gold → **NU red** → black;
+the jump to red at Paddle Master is the point, since the top two tiers wear the
+school colour. `TierBadge` takes `sm`/`md`/`lg` and a `short` flag for tight
+rows, `TierProgress` adds a meter toward the next tier, and `TierDot` is
+icon-only. Tier names, ranges, colours and blurbs are all in
+[`lib/tiers.ts`](lib/tiers.ts).
+
+The paddle in [`components/PaddleIcon.tsx`](components/PaddleIcon.tsx) is drawn
+bold and simple because it mostly renders at 11–16px, where thin strokes turn
+to mush; the ball only appears at 18px and up, below which it's a sub-pixel dot
+that muddies the silhouette. `NetRule` is the dashed table centre-line used to
+divide sections.
+
+**On trademarks:** the husky mark and the paddle are original drawings, not
+reproductions of Northeastern's trademarked athletics logo or of Paws, and the
+app describes itself as an independent student organisation in the footer. If
+the club ever becomes officially affiliated, that's the point to ask the
+university about using the real marks.
+
 ### Keeping page loads fast
 
 **Partial Prerendering does most of the work.** `cacheComponents: true` in

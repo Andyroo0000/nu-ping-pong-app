@@ -33,7 +33,7 @@ export function MatchmakingForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-xl bg-ink py-3.5 text-sm font-bold text-white"
+        className="w-full rounded-xl bg-nu transition-colors hover:bg-nu-deep py-3.5 text-sm font-bold text-white"
       >
         {label}
       </button>
@@ -79,7 +79,7 @@ function SearchButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-ink py-3.5 text-sm font-bold text-white disabled:opacity-50"
+      className="rounded-xl bg-nu transition-colors hover:bg-nu-deep py-3.5 text-sm font-bold text-white disabled:opacity-50"
     >
       {pending ? "Looking for someone…" : label}
     </button>

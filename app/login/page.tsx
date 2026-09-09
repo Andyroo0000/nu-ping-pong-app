@@ -51,7 +51,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Link href="/" aria-label="NU Ping Pong home">
-            <HuskyMark size={40} />
+            <HuskyMark size={44} />
           </Link>
           <h1 className="font-display text-2xl font-bold">
             {isSignUp ? "Join NU Ping Pong" : "Sign in to NU Ping Pong"}
@@ -131,7 +131,7 @@ function LoginForm() {
 
           <SubmitButton
             pendingLabel="Working…"
-            className="rounded-xl bg-ink px-4 py-3 text-sm font-bold text-white"
+            className="rounded-xl bg-nu transition-colors hover:bg-nu-deep px-4 py-3 text-sm font-bold text-white"
           >
             {isSignUp ? "Create account" : "Sign in"}
           </SubmitButton>

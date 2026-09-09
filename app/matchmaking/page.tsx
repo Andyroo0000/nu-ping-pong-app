@@ -8,6 +8,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
+import { NetRule } from "@/components/NetRule";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { MatchmakingForm } from "./MatchmakingForm";
 import { displayName } from "@/lib/names";
@@ -44,6 +45,7 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
         <p className="mt-1 text-sm text-text-dim">
           Say which hall you&rsquo;re in and we&rsquo;ll pair you with someone there.
         </p>
+        <NetRule className="mt-4" />
 
         <Suspense fallback={null}>
           <ProfileNudge />
@@ -98,8 +100,11 @@ async function RatingCard() {
   return (
     <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
       <div className="text-xs font-bold text-text-faint">YOUR RATING</div>
-      <div className="mt-0.5 font-display text-2xl font-bold">
-        {myRating.toLocaleString()} <TierBadge rating={myRating} className="ml-1 align-middle" />
+      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+        <span className="font-display text-2xl font-bold text-nu">
+          {myRating.toLocaleString()}
+        </span>
+        <TierBadge rating={myRating} />
       </div>
       <div className="mt-3.5 flex justify-between text-xs font-bold text-text-faint">
         <span>Matching range</span>
@@ -107,8 +112,8 @@ async function RatingCard() {
           {low.toLocaleString()} – {high.toLocaleString()}
         </span>
       </div>
-      <div className="mt-2 h-1.5 rounded-full bg-surface-2">
-        <div className="h-full w-full rounded-full bg-ink-bright" />
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full w-full rounded-full bg-gradient-to-r from-nu-bright to-nu" />
       </div>
     </div>
   );
@@ -135,7 +140,7 @@ async function MatchmakingPanel({ searchParams }: { searchParams: Params }) {
     : { data: null };
 
   return (
-    <div className="mt-4 rounded-2xl border border-ink bg-ink-dim p-4">
+    <div className="mt-4 rounded-2xl border-2 border-nu-line bg-nu-wash p-4">
       {searched && myHall ? (
         <>
           <div className="text-sm font-bold">Nobody&rsquo;s at {myHall} right now</div>
@@ -166,7 +171,7 @@ async function MatchmakingPanel({ searchParams }: { searchParams: Params }) {
                     <ActionForm action={pairWithPlayer} hidden={{ opponentId: p.user_id }} quiet>
                       <SubmitButton
                         pendingLabel="…"
-                        className="whitespace-nowrap rounded-[9px] bg-ink px-3.5 py-2.5 text-xs font-bold text-white"
+                        className="whitespace-nowrap rounded-[9px] bg-nu transition-colors hover:bg-nu-deep px-3.5 py-2.5 text-xs font-bold text-white"
                       >
                         Join
                       </SubmitButton>
@@ -269,7 +274,7 @@ async function Challenges() {
                 >
                   <SubmitButton
                     pendingLabel="…"
-                    className="rounded-[9px] bg-ink px-3.5 py-2.5 text-xs font-bold text-white"
+                    className="rounded-[9px] bg-nu transition-colors hover:bg-nu-deep px-3.5 py-2.5 text-xs font-bold text-white"
                   >
                     Accept
                   </SubmitButton>
