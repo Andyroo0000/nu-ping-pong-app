@@ -3,6 +3,7 @@ import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
 import { THEME_SCRIPT } from "@/components/ThemeToggle";
 import { PresenceProvider } from "@/components/PresenceProvider";
+import { siteUrl } from "@/lib/site-url";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 
 const spaceGrotesk = Space_Grotesk({
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "NU Ping Pong",
   applicationName: "NU Ping Pong",
   appleWebApp: { capable: true, title: "NU Ping Pong", statusBarStyle: "default" },
