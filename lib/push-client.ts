@@ -35,19 +35,38 @@ export function isIos(): boolean {
 }
 
 /**
- * Which browser this is on iOS. Only Safari can add a web app to the home
- * screen there, and only a home-screen web app can receive notifications — so
- * someone reading the install steps in Chrome needs telling before anything
- * else.
+ * Where the "add to home screen" control lives differs per browser, and
+ * there's no API to ask — so it has to be sniffed to give instructions that
+ * match what someone is actually looking at.
+ *
+ * `ios-other` matters most: only Safari can install a web app on iPhone, and
+ * only an installed web app can receive notifications, so Chrome-on-iOS needs
+ * telling before anything else.
  */
-export function iosBrowser(): "safari" | "chrome" | "firefox" | "edge" | "other" {
-  if (typeof window === "undefined") return "other";
+export type Platform =
+  | "ios-safari"
+  | "ios-other"
+  | "samsung"
+  | "android-firefox"
+  | "android-chromium"
+  | "desktop";
+
+export function platform(): Platform {
+  if (typeof window === "undefined") return "desktop";
   const ua = window.navigator.userAgent;
-  if (/CriOS/.test(ua)) return "chrome";
-  if (/FxiOS/.test(ua)) return "firefox";
-  if (/EdgiOS/.test(ua)) return "edge";
-  if (/Safari/.test(ua)) return "safari";
-  return "other";
+
+  if (isIos()) {
+    // Every iOS browser is Safari underneath, so these prefixes are the only
+    // way to tell them apart.
+    return /CriOS|FxiOS|EdgiOS|OPT\//.test(ua) ? "ios-other" : "ios-safari";
+  }
+
+  if (/SamsungBrowser/.test(ua)) return "samsung";
+  if (/Android/.test(ua)) {
+    if (/Firefox/.test(ua)) return "android-firefox";
+    return "android-chromium";
+  }
+  return "desktop";
 }
 
 export function pushSupported(): boolean {

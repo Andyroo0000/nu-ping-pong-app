@@ -10,7 +10,7 @@ import {
 } from "@/lib/push-client";
 import { deletePushSubscription, savePushSubscription, sendTestPush } from "@/app/actions";
 import { invalidateBrowserValues, useBrowserValue } from "@/lib/use-browser-value";
-import { IosInstallSteps } from "@/components/IosInstallSteps";
+import { InstallSteps } from "@/components/InstallSteps";
 
 type State = "checking" | "unsupported" | "ios-needs-install" | "off" | "on" | "blocked";
 
@@ -34,6 +34,7 @@ export function NotificationSettings() {
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showSteps, setShowSteps] = useState(false);
 
   useEffect(() => {
     if (support !== "ready") return;
@@ -128,13 +129,18 @@ export function NotificationSettings() {
         {copy(state)}
       </p>
 
-      {state === "ios-needs-install" && (
-        <div className="mt-3.5">
-          <IosInstallSteps compact />
-        </div>
-      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
+        {state === "ios-needs-install" && (
+          <button
+            type="button"
+            onClick={() => setShowSteps((open) => !open)}
+            aria-expanded={showSteps}
+            className="rounded-xl bg-nu px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-nu-deep"
+          >
+            {showSteps ? "Hide the steps" : "Show me how"}
+          </button>
+        )}
         {state === "off" && (
           <button
             type="button"
@@ -167,6 +173,12 @@ export function NotificationSettings() {
         )}
       </div>
 
+      {showSteps && state === "ios-needs-install" && (
+        <div className="mt-3.5 border-t border-border pt-3.5">
+          <InstallSteps compact />
+        </div>
+      )}
+
       {message && <p className="mt-2.5 text-[13px] font-semibold text-text-dim">{message}</p>}
 
       {state === "on" && (
@@ -187,7 +199,7 @@ function copy(state: State): string {
     case "off":
       return "Get told when someone challenges you, sends a message, or reports a match waiting on you.";
     case "ios-needs-install":
-      return "On iPhone, notifications only work once NU Ping Pong is on your home screen. Here's how:";
+      return "On iPhone, notifications only work once NU Ping Pong is on your home screen.";
     case "blocked":
       return "Your browser is blocking notifications for this site. On iPhone: Settings → Notifications → NU Ping Pong. On a computer: click the icon at the left of the address bar → Notifications → Allow. Then reload this page.";
     case "unsupported":

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { isIos, isStandalone } from "@/lib/push-client";
-import { IosInstallSteps } from "@/components/IosInstallSteps";
+import { InstallSteps } from "@/components/InstallSteps";
 import { invalidateBrowserValues, useBrowserValue } from "@/lib/use-browser-value";
 
 type BeforeInstallPromptEvent = Event & {
@@ -73,7 +73,7 @@ export function InstallPrompt() {
         </p>
         {showIosHint && (
           <div className="mt-3">
-            <IosInstallSteps />
+            <InstallSteps />
           </div>
         )}
         {deferred && (
