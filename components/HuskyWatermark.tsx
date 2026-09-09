@@ -13,7 +13,9 @@ import { HuskySilhouette } from "@/components/HuskySilhouette";
 export function HuskyWatermark() {
   return (
     <div className="husky-watermark" aria-hidden>
-      <HuskySilhouette className="absolute -right-20 -top-16 h-[260px] w-[260px] text-text/[0.032] sm:-right-24 sm:-top-20 sm:h-[340px] sm:w-[340px]" />
+      <HuskySilhouette className="absolute -right-20 -top-16 h-[260px] w-[260px] text-text/[0.032] sm:-right-24 sm:-top-20 sm:h-[340px] sm:w-[340px]"
+        features={false}
+      />
     </div>
   );
 }

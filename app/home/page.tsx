@@ -9,6 +9,7 @@ import { BottomTabs } from "@/components/BottomTabs";
 import { TierProgress, TierBadge } from "@/components/TierBadge";
 import { Avatar } from "@/components/Avatar";
 import { NetRule } from "@/components/NetRule";
+import { PageHeader } from "@/components/PageHeader";
 import { PaddleIcon } from "@/components/PaddleIcon";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ProfileNudge } from "@/components/ProfileNudge";
@@ -27,8 +28,12 @@ export default function HomePage() {
         <Nav />
       </Suspense>
 
-      <div className="mx-auto max-w-md px-6 py-8">
-        <Suspense fallback={<CardSkeleton />}>
+      <Suspense fallback={<div className="page-header h-[132px]" />}>
+        <HomeHeader />
+      </Suspense>
+
+      <div className="mx-auto max-w-md px-6 pb-8">
+        <Suspense fallback={<CardSkeleton className="mt-5" />}>
           <Greeting />
         </Suspense>
 
@@ -88,32 +93,35 @@ async function me() {
   return { user, supabase, profile };
 }
 
-async function Greeting() {
+async function HomeHeader() {
   const { profile } = await me();
   const record = profile ? profile.wins + profile.losses : 0;
 
   return (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold">
-            {profile ? `Hey, ${firstName(profile)}` : "Hey"}
-          </h1>
-          <p className="mt-0.5 text-[13px] text-text-dim">
-            {record === 0
-              ? "No matches logged yet — your first one sets your rating moving."
-              : `${profile?.wins}W–${profile?.losses}L across ${record} ranked ${
-                  record === 1 ? "match" : "matches"
-                }.`}
-          </p>
-        </div>
-        <OnlineCount className="shrink-0" />
-      </div>
+    <PageHeader
+      eyebrow="Northeastern Club Table Tennis"
+      title={profile ? `Hey, ${firstName(profile)}` : "Hey"}
+      subtitle={
+        record === 0
+          ? "No matches logged yet — your first one sets your rating moving."
+          : `${profile?.wins}W–${profile?.losses}L across ${record} ranked ${
+              record === 1 ? "match" : "matches"
+            }.`
+      }
+      trailing={<OnlineCount className="text-white/70" />}
+    />
+  );
+}
 
+async function Greeting() {
+  const { profile } = await me();
+
+  return (
+    <>
       {profile && (
         <TierProgress
           rating={profile.rating}
-          className="mt-4 rounded-2xl border border-border bg-surface p-4"
+          className="panel mt-5 rounded-2xl p-4"
         />
       )}
 
@@ -213,7 +221,7 @@ async function NeedsYou() {
         })}
 
         {pending?.map((m) => (
-          <div key={m.id} className="rounded-2xl border border-border-strong bg-surface p-3.5">
+          <div key={m.id} className="panel rounded-2xl p-3.5">
             <div className="flex items-center gap-3">
               <Avatar
                 player={m.profiles_a ?? { username: "?", full_name: null }}
@@ -270,7 +278,7 @@ async function AtTheTables() {
         {waiting.map((p) => (
           <div
             key={p.user_id}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3"
+            className="panel flex items-center gap-3 rounded-2xl px-3.5 py-3"
           >
             <OnlineAvatarWrapper userId={p.user_id}>
               <Avatar player={p} size={40} />

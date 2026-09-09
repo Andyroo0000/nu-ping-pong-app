@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { HuskyWatermark } from "@/components/HuskyWatermark";
 import { BottomTabs } from "@/components/BottomTabs";
 import { PeopleTabs } from "@/components/PeopleTabs";
+import { PageHeader } from "@/components/PageHeader";
 import { TierBadge } from "@/components/TierBadge";
 import { Avatar } from "@/components/Avatar";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
@@ -31,11 +32,13 @@ export default function MembersPage({ searchParams }: { searchParams: Params }) 
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
-      <div className="mx-auto max-w-2xl px-6 py-10">
-        <h1 className="font-display text-3xl font-bold">The Club</h1>
-        <p className="mt-1 text-sm text-text-dim">
-          Everyone who plays. Find someone near you, at your level, free when you are.
-        </p>
+      <PageHeader
+        eyebrow="Members"
+        title="The Club"
+        subtitle="Everyone who plays. Find someone near you, at your level, free when you are."
+      />
+
+      <div className="mx-auto max-w-2xl px-6 pb-10">
         <PeopleTabs />
 
         <Suspense fallback={<RowsSkeleton rows={5} />}>
@@ -111,7 +114,7 @@ async function Directory({ searchParams }: { searchParams: Params }) {
               <Link
                 key={p.id}
                 href={`/profile/${p.username}`}
-                className="flex gap-3.5 rounded-2xl border border-border bg-surface p-3.5 transition-colors hover:border-border-strong"
+                className="panel flex gap-3.5 rounded-2xl p-3.5 transition-colors hover:border-border-strong"
               >
                 <OnlineAvatarWrapper userId={p.id}>
                   <Avatar player={p} size={48} />

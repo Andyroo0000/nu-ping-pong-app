@@ -10,7 +10,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
-import { NetRule } from "@/components/NetRule";
+import { PageHeader } from "@/components/PageHeader";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -45,13 +45,13 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
-      <div className="mx-auto max-w-md px-6 py-10">
-        <h1 className="font-display text-3xl font-bold">Find a Match</h1>
-        <p className="mt-1 text-sm text-text-dim">
-          Say which hall you&rsquo;re in and we&rsquo;ll pair you with someone there.
-        </p>
-        <NetRule className="mt-4" />
+      <PageHeader
+        eyebrow="Matchmaking"
+        title="Find a Match"
+        subtitle="Say which hall you're in and we'll pair you with someone there."
+      />
 
+      <div className="mx-auto max-w-md px-6 pb-10">
         <InstallPrompt />
 
         <Suspense fallback={null}>
@@ -109,7 +109,7 @@ async function RatingCard() {
   const high = myRating + RANGE;
 
   return (
-    <div className="mt-5 rounded-2xl border border-border bg-surface p-4">
+    <div className="panel mt-5 rounded-2xl p-4">
       <div className="text-xs font-bold text-text-faint">YOUR RATING</div>
       <div className="mt-0.5 flex flex-wrap items-center gap-2">
         <span className="font-display text-2xl font-bold text-nu-accent">
@@ -394,7 +394,7 @@ function Row({
 }) {
   const name = player ? displayName(player) : "Unknown player";
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3">
+    <div className="panel flex items-center gap-3 rounded-2xl px-3.5 py-3">
       <OnlineAvatarWrapper userId={player?.id}>
         <Avatar player={player ?? { username: "?", full_name: null }} size={42} />
       </OnlineAvatarWrapper>

@@ -203,13 +203,27 @@ CSS and inline SVG — no images, no canvas, no animation library — so it stil
 ships inside the static shell. It's always dark regardless of theme, because a
 light version looked like an empty page with a table drawn on it.
 
-Everything behind the login stays quiet and light. In-app pages get
-[`HuskyWatermark`](components/HuskyWatermark.tsx) instead: the same husky,
-small, cropped into the top corner at ~3% opacity, so a short leaderboard
-doesn't read as an empty white rectangle. **It needs `isolate` on the page
-container** — a `z-index: -1` child paints *behind* its parent's own background
-unless that parent is a stacking context, so without it the watermark is
-invisible.
+In-app pages carry the same motif inward without becoming a spectacle. Each
+one opens with [`PageHeader`](components/PageHeader.tsx): a shallow dark banner
+holding the title, one line of context and optionally a stat or a tab pair,
+with the table edge in perspective along its bottom and the net band on the
+very edge. It stays dark in both themes so the app reads as one place. The
+content below stays light and quiet — that split is what keeps a leaderboard
+readable while giving the page an identity.
+
+Cards use the `.panel` class rather than a flat `bg-surface` box: a whisper of
+gradient and a real shadow. A hairline border on flat white is most of what
+made these screens look unfinished.
+
+[`HuskyWatermark`](components/HuskyWatermark.tsx) puts the husky faintly behind
+page content. **It needs `isolate` on the page container** — a `z-index: -1`
+child paints *behind* its parent's own background unless that parent is a
+stacking context, so without it the watermark is invisible.
+
+`HuskySilhouette` takes `features={false}`, and every cropped use passes it.
+A partial head with two cropped eye cut-outs in the corner of a banner reads
+as random dark blobs; the bare skull-and-ears outline survives any crop. Only
+the hero, which shows the whole head, keeps the face.
 
 **Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
 each of the six tiers its own accent, a paddle in that colour, and one pip per

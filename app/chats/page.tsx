@@ -8,7 +8,7 @@ import { HuskyWatermark } from "@/components/HuskyWatermark";
 import { BottomTabs } from "@/components/BottomTabs";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
-import { NetRule } from "@/components/NetRule";
+import { PageHeader } from "@/components/PageHeader";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { displayName } from "@/lib/names";
 import { relativeTime } from "@/lib/time";
@@ -26,13 +26,14 @@ export default function ChatsPage() {
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
-      <div className="mx-auto max-w-md px-6 py-10">
-        <h1 className="font-display text-3xl font-bold">Chats</h1>
-        <p className="mt-1 text-sm text-text-dim">
-          A channel opens automatically whenever a challenge is accepted.
-        </p>
-        <NetRule className="mt-4" />
-        <div className="mt-7">
+      <PageHeader
+        eyebrow="Messages"
+        title="Chats"
+        subtitle="A channel opens whenever a challenge is accepted, or say hello from anyone's profile."
+      />
+
+      <div className="mx-auto max-w-md px-6 pb-10">
+        <div className="mt-6">
           <Suspense fallback={<RowsSkeleton rows={3} />}>
             <ChannelList />
           </Suspense>
@@ -123,7 +124,7 @@ async function ChannelList() {
           <Link
             key={channel.id}
             href={`/chats/${channel.id}`}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 hover:border-border-strong"
+            className="panel flex items-center gap-3 rounded-2xl px-3.5 py-3 hover:border-border-strong"
           >
             <OnlineAvatarWrapper userId={members[0]?.user_id}>
               <Avatar player={other ?? { username: title, full_name: null }} size={42} />

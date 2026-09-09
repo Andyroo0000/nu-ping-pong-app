@@ -182,6 +182,30 @@ body {
 }
 
 /*
+  In-app page banner. Same family as the landing hero but shallower, and it
+  stays dark in both themes so the app reads as one place rather than two.
+*/
+.page-header {
+  background:
+    radial-gradient(80% 120% at 78% 0%, color-mix(in oklab, var(--nu-red) 30%, transparent), transparent 65%),
+    linear-gradient(180deg, oklch(20% 0.03 20) 0%, oklch(14% 0.025 20) 100%);
+}
+
+/* Cards on light pages. A flat white box with a hairline border is what made
+   these screens look unfinished; a whisper of gradient and a real shadow give
+   them an edge without shouting. */
+.panel {
+  background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px oklch(20% 0.02 25 / 0.05), 0 8px 24px -16px oklch(20% 0.02 25 / 0.18);
+}
+
+.dark .panel {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-alt) 100%);
+  box-shadow: 0 1px 2px oklch(0% 0 0 / 0.3), 0 8px 24px -16px oklch(0% 0 0 / 0.5);
+}
+
+/*
   Faint husky watermark behind in-app pages. Barely there on purpose: these
   are screens people read, not screens they admire.
 
