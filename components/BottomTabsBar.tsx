@@ -16,8 +16,9 @@ export function BottomTabsBar({
   const pathname = usePathname();
 
   const tabs = [
-    { href: "/leaderboard", label: "Ladder", icon: <TrophyIcon />, badge: 0 },
+    { href: "/home", label: "Home", icon: <HomeIcon />, badge: 0 },
     { href: "/matchmaking", label: "Play", icon: <PaddleIcon size={22} />, badge: challenges },
+    { href: "/members", label: "Club", icon: <PeopleIcon />, badge: 0 },
     { href: "/chats", label: "Chats", icon: <ChatIcon />, badge: unread },
     {
       href: username ? `/profile/${username}` : "/profile/edit",
@@ -35,11 +36,13 @@ export function BottomTabsBar({
     >
       <ul className="mx-auto flex max-w-md">
         {tabs.map((tab) => {
+          // "Club" owns the ladder too, since the two are a toggle pair.
           const active =
-            tab.href === "/leaderboard"
-              ? pathname === "/leaderboard"
-              : pathname.startsWith(tab.href.split("?")[0]) ||
-                (tab.label === "You" && pathname.startsWith("/profile"));
+            tab.label === "You"
+              ? pathname.startsWith("/profile")
+              : tab.label === "Club"
+                ? pathname === "/members" || pathname === "/leaderboard"
+                : pathname.startsWith(tab.href);
 
           return (
             <li key={tab.label} className="flex-1">
@@ -69,12 +72,22 @@ export function BottomTabsBar({
   );
 }
 
-function TrophyIcon() {
+function HomeIcon() {
   return (
     <Icon>
-      <path d="M8 4h8v4a4 4 0 0 1-8 0Z" />
-      <path d="M8 5H5.5A1.5 1.5 0 0 0 4 6.5C4 9 6 10 8 10M16 5h2.5A1.5 1.5 0 0 1 20 6.5C20 9 18 10 16 10" />
-      <path d="M12 12v4M9 20h6M10 16h4l.5 4h-5Z" />
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M6 9.8V20h12V9.8" />
+      <path d="M10 20v-5h4v5" />
+    </Icon>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <Icon>
+      <circle cx="9.5" cy="8.5" r="3.1" />
+      <path d="M3.5 19.5a6 6 0 0 1 12 0" />
+      <path d="M16 6.2a3.1 3.1 0 0 1 0 5.9M18 13.6a5.4 5.4 0 0 1 2.5 4.4" />
     </Icon>
   );
 }

@@ -11,14 +11,15 @@ export async function Nav() {
 
   return (
     <div className="flex items-center justify-between border-b-2 border-nu bg-bg-alt px-6 py-4">
-      <Link href="/leaderboard">
+      <Link href="/home">
         <Wordmark size={28} />
       </Link>
       <div className="hidden items-center gap-8 sm:flex">
-        <NavLink href="/leaderboard">Leaderboard</NavLink>
+        <NavLink href="/home">Home</NavLink>
         <NavLink href="/matchmaking" badge={openChallenges}>
           Matchmaking
         </NavLink>
+        <NavLink href="/members">Club</NavLink>
         <NavLink href="/chats" badge={unread}>
           Chats
         </NavLink>

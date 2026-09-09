@@ -90,6 +90,18 @@ any `@northeastern.edu` email and a password.
   profile page ("Awaiting Your Confirmation"). Ratings only change on
   confirmation, via the `confirm_match` Postgres function — this keeps the
   rating math atomic and stops a player from unilaterally rating themselves up.
+- **Home** (`app/home`) — the signed-in front door. Your tier progress, a
+  "Needs you" block for challenges to answer and results to confirm, who's at
+  the tables right now, the top of the ladder and where you sit. Ordered by
+  urgency: anything waiting on you comes before anything else.
+- **The Club** (`app/members`) — the directory. Filter by casual/competitive,
+  hall, when they usually play, and year, or search by name. Completed profiles
+  sort above blank ones, since a card with a photo and a line about someone is
+  the entire point. It shares a toggle with the leaderboard
+  ([`components/PeopleTabs.tsx`](components/PeopleTabs.tsx)): same people, two
+  orderings — the ladder for who's winning, the directory for finding a person
+  to play. A ladder sorted by rating is a hostile front door for a beginner;
+  this is the friendly one.
 - **Profiles** (`app/profile/edit`) — a photo, a short bio, year, home hall,
   when you usually play, and whether you're here for casual or competitive
   games. Photos go straight from the browser to Supabase Storage after being
@@ -332,9 +344,6 @@ user id. To make them members-only, flip the bucket to private and switch
 - No moderation tooling for profile photos or bios, and no way to report a
   player. Fine for a club that knows each other; the first thing to add if that
   stops being true.
-- No members directory — the leaderboard is the only way to browse people, and
-  it's sorted by rating, which isn't the friendliest front door for someone
-  who's here casually.
 - Singles only — no doubles, and no tournament brackets.
 - Notifications are push-only. Someone who never installs the app or declines
   the permission prompt still finds out from the nav badge and nothing else.

@@ -15,8 +15,8 @@ export default function LandingPage() {
           <Link href="/leaderboard" className="text-sm font-semibold text-text-dim hover:text-text">
             Leaderboard
           </Link>
-          <Link href="/matchmaking" className="text-sm font-semibold text-text-dim hover:text-text">
-            Matchmaking
+          <Link href="/members" className="text-sm font-semibold text-text-dim hover:text-text">
+            The Club
           </Link>
         </div>
         <div className="flex items-center gap-3">

@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   // Already signed in — there is nothing to do on the login page, and landing
   // back on it after signing in is what makes the flow feel stuck.
   if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/leaderboard", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   return response;

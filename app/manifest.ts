@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "NU Ping Pong",
     description:
       "Northeastern's ping pong ladder — log matches, climb the tiers, and find someone to play right now.",
-    start_url: "/leaderboard",
+    start_url: "/home",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

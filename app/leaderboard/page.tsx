@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { BottomTabs } from "@/components/BottomTabs";
 import { TierBadge } from "@/components/TierBadge";
-import { NetRule } from "@/components/NetRule";
+import { PeopleTabs } from "@/components/PeopleTabs";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { Avatar } from "@/components/Avatar";
 import { LadderSkeleton, NavSkeleton } from "@/components/Skeletons";
@@ -22,7 +22,7 @@ export default function LeaderboardPage() {
       </Suspense>
       <div className="mx-auto max-w-2xl px-6 py-10">
         <h1 className="font-display text-3xl font-bold">Leaderboard</h1>
-        <NetRule className="mt-4" />
+        <PeopleTabs />
         <Suspense fallback={<LadderSkeleton />}>
           <Ladder />
         </Suspense>

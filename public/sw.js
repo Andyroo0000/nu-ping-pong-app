@@ -39,7 +39,7 @@ self.addEventListener("push", (event) => {
     // "new message" alerts from one conversation.
     tag: payload.tag || "nupp",
     renotify: Boolean(payload.tag),
-    data: { url: payload.url || "/leaderboard" },
+    data: { url: payload.url || "/home" },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -47,7 +47,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || "/leaderboard";
+  const target = (event.notification.data && event.notification.data.url) || "/home";
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
