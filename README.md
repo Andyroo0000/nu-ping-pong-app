@@ -24,8 +24,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0005_profiles_and_casual_play.sql`](supabase/migrations/0005_profiles_and_casual_play.sql) —
      profile pictures, bios, casual matches, and a **security fix**: see
      [Security model](#security-model).
+   - [`supabase/migrations/0006_push_subscriptions.sql`](supabase/migrations/0006_push_subscriptions.sql) —
+     push notification subscriptions and per-player toggles.
 
-   0002 through 0005 are additive: safe to run on a database that already has
+   0002 through 0006 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
@@ -46,6 +48,27 @@ cp .env.local.example .env.local
 
 Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from
 **Project Settings → API**.
+
+For notifications you also need three more, all free:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put the pair in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, set
+`VAPID_SUBJECT` to `mailto:` your email, and copy the **service_role** key from
+Project Settings → API into `SUPABASE_SERVICE_ROLE_KEY`.
+
+Add all four to Vercel under Settings → Environment Variables too, or
+notifications will work locally and silently do nothing in production.
+
+> `SUPABASE_SERVICE_ROLE_KEY` bypasses row level security on every table.
+> It is server-only — never prefix it with `NEXT_PUBLIC_`, never import
+> [`lib/supabase/admin.ts`](lib/supabase/admin.ts) from a Client Component.
+> That file starts with `import "server-only"` so the build fails if you do.
+
+With any of these missing, the app runs exactly as before with notifications
+switched off, rather than erroring.
 
 ## 3. Run it
 
@@ -211,6 +234,40 @@ keep that count down:
 It's also worth checking that your Vercel region and Supabase region are on
 the same coast. Every query pays that distance, several times per page.
 
+### Notifications and installing to a phone
+
+Both are free, permanently. Web Push is a browser standard delivered by
+Google's, Apple's and Mozilla's own push services at no cost and with no
+signup — there is no Firebase project and no OneSignal account involved.
+
+- **Install** — [`app/manifest.ts`](app/manifest.ts) plus icons in `public/`
+  and the service worker at [`public/sw.js`](public/sw.js). The worker
+  deliberately caches nothing: this app is almost entirely live data (who's
+  online, who's waiting, unread counts), so serving a stale shell would show
+  people a version of the club that isn't true. It has a pass-through `fetch`
+  handler purely because Chrome requires one before offering to install.
+- **Push** — subscriptions are stored per browser, so a phone and a laptop each
+  get their own. Sending happens inline in the Server Action that already did
+  the work, so there's no cron job or background worker. Notifications never
+  throw: a failed push is not a reason for the challenge or message that
+  triggered it to fail.
+- **Three triggers**: someone challenges you (or accepts yours), a new chat
+  message, and a match reported against you that needs confirming. Each has a
+  per-player toggle on `profiles`, all defaulting on — but nothing is ever sent
+  until someone explicitly taps "Turn on notifications", since no subscription
+  exists before that.
+- Notifications sharing a `tag` replace each other, so five messages in one
+  conversation are one notification rather than five.
+
+**On iPhone, push only works once the app is on the home screen** (iOS 16.4+).
+Safari in a normal tab cannot receive it. `NotificationSettings` detects that
+case and says so instead of claiming the browser is unsupported.
+
+Two paths must never be redirected by the proxy: `/sw.js` and
+`/manifest.webmanifest`. The browser fetches both without a session, and a 307
+to `/login` silently kills installability and push with no visible error. They
+are excluded in both [`proxy.ts`](proxy.ts) and the public-path list.
+
 ### Security model
 
 Every new table has row level security on. Channels, their rosters, and their
@@ -255,10 +312,9 @@ user id. To make them members-only, flip the bucket to private and switch
 - No members directory — the leaderboard is the only way to browse people, and
   it's sorted by rating, which isn't the friendliest front door for someone
   who's here casually.
-- No notifications of any kind. A challenge or a message only surfaces as a
-  nav badge next time you open the app, which is the biggest gap for something
-  meant to get people playing.
 - Singles only — no doubles, and no tournament brackets.
+- Notifications are push-only. Someone who never installs the app or declines
+  the permission prompt still finds out from the nav badge and nothing else.
 - Presence shows "online now" but never "last seen", so an empty club looks
   identical whether everyone left an hour ago or a week ago.
 - The queue is a flat list — no per-table or per-time-slot scheduling, and

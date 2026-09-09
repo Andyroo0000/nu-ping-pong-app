@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
 import { ProfileForm } from "./ProfileForm";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 export default function EditProfilePage() {
   return (
@@ -50,6 +52,12 @@ async function EditProfileBody() {
         This is what people see before they ask you for a game. A photo and a line about
         yourself go a long way.
       </p>
+
+      <InstallPrompt />
+
+      <div className="mt-6">
+        <NotificationSettings />
+      </div>
 
       <ProfileForm profile={profile} />
     </div>

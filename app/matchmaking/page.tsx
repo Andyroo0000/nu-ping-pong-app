@@ -11,6 +11,7 @@ import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons"
 import { NetRule } from "@/components/NetRule";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { ProfileNudge } from "@/components/ProfileNudge";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { MatchmakingForm } from "./MatchmakingForm";
 import { displayName } from "@/lib/names";
 import { playStyleLabel } from "@/lib/halls";
@@ -47,6 +48,8 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
           Say which hall you&rsquo;re in and we&rsquo;ll pair you with someone there.
         </p>
         <NetRule className="mt-4" />
+
+        <InstallPrompt />
 
         <Suspense fallback={null}>
           <ProfileNudge />

@@ -1,7 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback"];
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/auth/callback",
+  // Fetched by the browser without a session; redirecting either one breaks
+  // installation and push notifications.
+  "/sw.js",
+  "/manifest.webmanifest",
+];
 
 function isPublicPath(pathname: string) {
   return (

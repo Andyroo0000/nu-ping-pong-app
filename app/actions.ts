@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { MatchGame } from "@/lib/database.types";
 import { normalizePlayStyle, OTHER_HALL } from "@/lib/halls";
 import { AVAILABILITY_VALUES, normalizePlayPreference, YEAR_VALUES } from "@/lib/profile";
+import { notify, preview } from "@/lib/push";
+import { displayName } from "@/lib/names";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -82,9 +84,17 @@ export async function reportMatch(formData: FormData): Promise<ActionResult> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, full_name")
     .eq("id", user.id)
     .single();
+
+  const me = profile ? displayName(profile) : "Someone";
+  await notify(opponentId, "confirmation", {
+    title: "Confirm a result",
+    body: `${me} reported a ${isRanked ? "ranked" : "casual"} match ${gamesWonA}–${gamesWonB}. Confirm or dispute it.`,
+    url: `/profile/${profile?.username ?? ""}`,
+    tag: "confirmation",
+  });
 
   revalidatePath("/leaderboard");
   redirect(`/profile/${profile?.username ?? ""}`);
@@ -123,6 +133,14 @@ export async function sendChallenge(formData: FormData): Promise<ActionResult> {
   });
   if (error) return { ok: false, error: error.message };
 
+  const me = await currentPlayerName(supabase);
+  await notify(opponentId, "challenge", {
+    title: "New challenge",
+    body: note ? `${me} challenged you: ${preview(note, 80)}` : `${me} challenged you to a match.`,
+    url: "/matchmaking",
+    tag: "challenge",
+  });
+
   revalidatePath("/matchmaking");
   return { ok: true, message: "Challenge sent — you'll get a chat once they accept." };
 }
@@ -133,11 +151,29 @@ export async function respondToChallenge(formData: FormData): Promise<ActionResu
   if (!challengeId) return { ok: false, error: "Missing challenge." };
 
   const supabase = await createClient();
+
+  // Read who to tell before responding — accepting clears the pending row.
+  const { data: challenge } = await supabase
+    .from("challenges")
+    .select("challenger")
+    .eq("id", challengeId)
+    .maybeSingle();
+
   const { error } = await supabase.rpc("respond_challenge", {
     p_challenge_id: challengeId,
     p_accept: accept,
   });
   if (error) return { ok: false, error: error.message };
+
+  if (accept && challenge?.challenger) {
+    const me = await currentPlayerName(supabase);
+    await notify(challenge.challenger, "challenge", {
+      title: "Match on",
+      body: `${me} accepted your challenge. Your chat is open.`,
+      url: "/chats",
+      tag: "challenge",
+    });
+  }
 
   revalidatePath("/matchmaking");
   revalidatePath("/chats");
@@ -334,6 +370,117 @@ export async function sendMessage(formData: FormData): Promise<ActionResult> {
     .insert({ channel_id: channelId, author_id: user.id, body, kind: "user" });
   if (error) return { ok: false, error: error.message };
 
+  await notifyChannel(supabase, channelId, user.id, body);
+
   revalidatePath(`/chats/${channelId}`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+
+async function currentPlayerName(supabase: ServerSupabase): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return "Someone";
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name, username")
+    .eq("id", user.id)
+    .maybeSingle();
+  return data ? displayName(data) : "Someone";
+}
+
+async function notifyChannel(
+  supabase: ServerSupabase,
+  channelId: string,
+  authorId: string,
+  body: string
+) {
+  const [{ data: members }, name] = await Promise.all([
+    supabase.from("channel_members").select("user_id").eq("channel_id", channelId),
+    currentPlayerName(supabase),
+  ]);
+
+  const recipients = (members ?? [])
+    .map((m) => m.user_id)
+    .filter((id) => id !== authorId);
+
+  await Promise.all(
+    recipients.map((id) =>
+      notify(id, "message", {
+        title: name,
+        body: preview(body),
+        url: `/chats/${channelId}`,
+        // Tagged per channel, so five messages from one person replace each
+        // other instead of stacking five notifications.
+        tag: `chat-${channelId}`,
+      })
+    )
+  );
+}
+
+/** Store a browser's push subscription so the server can reach this player. */
+export async function savePushSubscription(formData: FormData): Promise<ActionResult> {
+  const endpoint = String(formData.get("endpoint") ?? "");
+  const p256dh = String(formData.get("p256dh") ?? "");
+  const auth = String(formData.get("auth") ?? "");
+  const userAgent = String(formData.get("userAgent") ?? "").slice(0, 300);
+
+  if (!endpoint || !p256dh || !auth) {
+    return { ok: false, error: "That subscription looked incomplete. Try again." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    {
+      endpoint,
+      user_id: user.id,
+      p256dh,
+      auth,
+      user_agent: userAgent || null,
+      last_used_at: new Date().toISOString(),
+    },
+    { onConflict: "endpoint" }
+  );
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true, message: "Notifications are on for this device." };
+}
+
+export async function deletePushSubscription(formData: FormData): Promise<ActionResult> {
+  const endpoint = String(formData.get("endpoint") ?? "");
+  if (!endpoint) return { ok: false, error: "Missing subscription." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true, message: "Notifications are off for this device." };
+}
+
+/** Prove to someone that it works, right after they turn it on. */
+export async function sendTestPush(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await notify(user.id, "challenge", {
+    title: "Notifications are on",
+    body: "This is what a challenge will look like. See you at the tables.",
+    url: "/matchmaking",
+    tag: "test",
+  });
+  return { ok: true, message: "Sent — check your notifications." };
 }

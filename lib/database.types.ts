@@ -29,6 +29,9 @@ export interface Database {
           availability: string[];
           play_preference: PlayPreference;
           avatar_path: string | null;
+          notify_challenges: boolean;
+          notify_messages: boolean;
+          notify_confirmations: boolean;
         };
         Insert: {
           id: string;
@@ -44,6 +47,9 @@ export interface Database {
           availability?: string[];
           play_preference?: PlayPreference;
           avatar_path?: string | null;
+          notify_challenges?: boolean;
+          notify_messages?: boolean;
+          notify_confirmations?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
@@ -261,6 +267,36 @@ export interface Database {
           {
             foreignKeyName: "challenges_opponent_fkey";
             columns: ["opponent"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      push_subscriptions: {
+        Row: {
+          endpoint: string;
+          user_id: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          endpoint: string;
+          user_id: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey";
+            columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
