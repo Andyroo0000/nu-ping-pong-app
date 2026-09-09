@@ -149,6 +149,54 @@ body {
     radial-gradient(circle at 12% 88%, color-mix(in oklab, var(--nu-accent) 5%, transparent), transparent 46%);
 }
 
+/*
+  Landing hero. Always dark regardless of theme: it's a title screen, and a
+  light version of it looked like an empty page with a table drawn on it.
+*/
+.hero-scene {
+  background:
+    radial-gradient(90% 70% at 50% 100%, color-mix(in oklab, var(--nu-red) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, oklch(19% 0.03 20) 0%, oklch(13% 0.025 20) 55%, oklch(9% 0.02 20) 100%);
+  color: oklch(97% 0.005 25);
+}
+
+/* Ball crossing the table, and bouncing while it goes. Two nested elements
+   so the horizontal travel and the bounce can run at different rates —
+   one keyframe set can't do both without the arc looking mechanical. */
+@keyframes ball-flight {
+  0% { transform: translateX(-8vw); }
+  100% { transform: translateX(104vw); }
+}
+
+@keyframes ball-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-72px); }
+}
+
+.ball-flight {
+  animation: ball-flight 7.5s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+.ball-bounce {
+  animation: ball-bounce 1.25s cubic-bezier(0.33, 0, 0.66, 1) infinite;
+}
+
+/*
+  Faint husky watermark behind in-app pages. Barely there on purpose: these
+  are screens people read, not screens they admire.
+
+  The negative z-index needs the page container to be a stacking context
+  (Tailwind's `isolate`). Without that, a z-index:-1 child paints *behind* its
+  parent's own background — so on a page with bg-bg it would be invisible.
+*/
+.husky-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 /* Soft pulse on the online-now dot. */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Wordmark } from "@/components/HuskyMark";
+import { Wordmark } from "@/components/NMark";
+import { HeroScene } from "@/components/HeroScene";
 import { NetRule } from "@/components/NetRule";
 import { PaddleIcon } from "@/components/PaddleIcon";
 import { TIERS } from "@/lib/tiers";
@@ -8,58 +9,70 @@ import { TierBadge } from "@/components/TierBadge";
 export default function LandingPage() {
   return (
     <div className="bg-bg">
-      {/* NAV */}
-      <div className="flex h-[76px] items-center justify-between border-b-2 border-nu bg-bg-alt px-6 sm:px-16">
-        <Wordmark size={34} className="[&_span]:text-lg" />
-        <div className="hidden items-center gap-10 md:flex">
-          <Link href="/leaderboard" className="text-sm font-semibold text-text-dim hover:text-text">
-            Leaderboard
-          </Link>
-          <Link href="/members" className="text-sm font-semibold text-text-dim hover:text-text">
-            The Club
-          </Link>
+      <HeroScene>
+        {/* NAV */}
+        <div className="flex h-[76px] items-center justify-between px-6 sm:px-16">
+          <Wordmark
+            size={34}
+            className="[&_span]:text-lg [&_span_span]:text-nu-bright"
+          />
+          <div className="hidden items-center gap-10 md:flex">
+            <Link
+              href="/leaderboard"
+              className="text-sm font-semibold text-white/70 hover:text-white"
+            >
+              Leaderboard
+            </Link>
+            <Link
+              href="/members"
+              className="text-sm font-semibold text-white/70 hover:text-white"
+            >
+              The Club
+            </Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login?mode=signin"
+              className="hidden px-1 py-2 text-sm font-semibold text-white/70 hover:text-white sm:inline"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/login?mode=signup"
+              className="whitespace-nowrap rounded-[10px] bg-nu px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-nu-deep"
+            >
+              Join the Club
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login?mode=signin"
-            className="hidden px-1 py-2 text-sm font-semibold text-text-dim hover:text-text sm:inline"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/login?mode=signup"
-            className="rounded-[10px] bg-nu px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-nu-deep"
-          >
-            Join the Club
-          </Link>
-        </div>
-      </div>
 
-      {/* HERO */}
-      <div className="relative overflow-hidden">
-        <div className="table-glow pointer-events-none absolute inset-0" />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-6 py-24 sm:px-16 md:grid-cols-2 md:py-28">
+        {/* HERO */}
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-6 pb-40 pt-14 sm:px-16 md:grid-cols-2 md:pb-52 md:pt-20">
           <div className="flex flex-col gap-6">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-nu-line bg-nu-wash px-3.5 py-1.5 text-[13px] font-semibold text-text-dim">
-              <span className="h-2 w-2 rounded-full bg-nu" />
-              Northeastern Club Table Tennis
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[13px] font-semibold text-white/80 backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-nu-bright" />
+              Northeastern Club Table Tennis · Oakland
             </div>
             <h1 className="font-display text-6xl font-bold leading-[1.03] tracking-tight sm:text-7xl">
               Every rally
               <br />
-              <span className="text-nu-accent">counts.</span>
+              <span className="text-nu-bright">counts.</span>
             </h1>
-            <p className="max-w-md text-lg leading-relaxed text-text-dim">
-              Log your matches, climb the ladder, and find your next opponent — an
-              ELO-style ranking system built for Northeastern&rsquo;s ping pong club.
+            <p className="max-w-md text-lg leading-relaxed text-white/70">
+              Log your matches, climb the ladder, and find your next opponent —
+              an ELO-style ranking system built for Northeastern&rsquo;s ping
+              pong club.
             </p>
-            <div className="mt-1 flex items-center gap-4">
-              <Link href="/login?mode=signup" className="rounded-[10px] bg-nu px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-nu-deep">
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <Link
+                href="/login?mode=signup"
+                className="whitespace-nowrap rounded-[10px] bg-nu px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-nu-deep"
+              >
                 Join the Club
               </Link>
               <Link
                 href="/leaderboard"
-                className="rounded-[10px] border border-border-strong px-6 py-3.5 text-[15px] font-bold"
+                className="whitespace-nowrap rounded-[10px] border border-white/25 px-6 py-3.5 text-[15px] font-bold text-white"
               >
                 View Leaderboard →
               </Link>
@@ -67,26 +80,38 @@ export default function LandingPage() {
           </div>
 
           <div className="flex justify-center">
-            <div className="w-full max-w-[340px] rounded-[20px] border border-border-strong bg-bg p-7 shadow-[0_30px_60px_-20px_oklch(0%_0%_0%_/_0.18)] dark:shadow-none">
+            <div className="w-full max-w-[340px] rounded-[20px] border border-white/15 bg-white/[0.07] p-7 backdrop-blur-md">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-nu bg-nu-wash font-display text-lg font-bold text-nu-accent">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-nu-bright bg-nu/25 font-display text-lg font-bold text-white">
                   JP
                 </div>
                 <div>
-                  <div className="text-[17px] font-bold">Jordan Park</div>
+                  <div className="text-[17px] font-bold text-white">
+                    Jordan Park
+                  </div>
                   <div className="mt-1.5">
                     <TierBadge rating={1742} size="sm" />
                   </div>
                 </div>
               </div>
               <div className="mt-5">
-                <div className="font-display text-5xl font-bold tracking-tight text-nu-accent">1,742</div>
-                <div className="text-[13px] font-semibold text-text-faint">Rank #12 overall</div>
+                <div className="font-display text-5xl font-bold tracking-tight text-white">
+                  1,742
+                </div>
+                <div className="text-[13px] font-semibold text-white/50">
+                  Rank #12 overall
+                </div>
               </div>
-              <svg className="mt-4" width="100%" height="70" viewBox="0 0 284 70" fill="none">
+              <svg
+                className="mt-4"
+                width="100%"
+                height="70"
+                viewBox="0 0 284 70"
+                fill="none"
+              >
                 <path
                   d="M0 50 L36 44 L72 52 L108 30 L144 36 L180 18 L216 24 L252 8 L284 14"
-                  stroke="var(--nu-red)"
+                  stroke="var(--nu-red-bright)"
                   strokeWidth="3"
                   fill="none"
                   strokeLinecap="round"
@@ -96,12 +121,14 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </div>
+      </HeroScene>
 
       {/* HOW IT WORKS */}
       <div className="border-y border-border bg-surface px-6 py-20 sm:px-16">
         <div className="mx-auto max-w-6xl">
-          <h2 className="font-display text-3xl font-bold tracking-tight">Three steps to your first rating.</h2>
+          <h2 className="font-display text-3xl font-bold tracking-tight">
+            Three steps to your first rating.
+          </h2>
           <p className="mt-3 max-w-lg text-text-dim">
             No sign-up sheets, no spreadsheets — just play and log.
           </p>
@@ -125,7 +152,9 @@ export default function LandingPage() {
                   <PaddleIcon size={22} color="var(--nu-red)" />
                 </div>
                 <h3 className="text-lg font-bold">{step.title}</h3>
-                <p className="text-[15px] leading-relaxed text-text-dim">{step.body}</p>
+                <p className="text-[15px] leading-relaxed text-text-dim">
+                  {step.body}
+                </p>
               </div>
             ))}
           </div>
@@ -139,8 +168,9 @@ export default function LandingPage() {
             Six tiers. One ladder.
           </h2>
           <p className="mt-3 max-w-lg text-text-dim">
-            Every ranked match moves your rating — and every tier is a milestone worth bragging
-            about. Play casually instead and your rating stays put.
+            Every ranked match moves your rating — and every tier is a milestone
+            worth bragging about. Play casually instead and your rating stays
+            put.
           </p>
           <div className="mt-11 flex flex-col gap-2.5">
             {TIERS.map((tier) => (
@@ -154,22 +184,34 @@ export default function LandingPage() {
               >
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                  style={{ background: `color-mix(in oklab, ${tier.color} 16%, var(--bg))` }}
+                  style={{
+                    background: `color-mix(in oklab, ${tier.color} 16%, var(--bg))`,
+                  }}
                 >
                   <PaddleIcon size={24} color={tier.color} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                    <span className="text-[15px] font-bold" style={{ color: tier.color }}>
+                    <span
+                      className="text-[15px] font-bold"
+                      style={{ color: tier.color }}
+                    >
                       {tier.name}
                     </span>
                     <span className="font-display text-xs font-bold text-text-faint">
-                      {Number.isFinite(tier.max) ? `${tier.min}–${tier.max}` : `${tier.min}+`}
+                      {Number.isFinite(tier.max)
+                        ? `${tier.min}–${tier.max}`
+                        : `${tier.min}+`}
                     </span>
                   </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-text-dim">{tier.blurb}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
+                    {tier.blurb}
+                  </p>
                 </div>
-                <div className="hidden shrink-0 items-center gap-[3px] sm:flex" aria-hidden>
+                <div
+                  className="hidden shrink-0 items-center gap-[3px] sm:flex"
+                  aria-hidden
+                >
                   {Array.from({ length: 6 }).map((_, i) => (
                     <span
                       key={i}
@@ -191,16 +233,18 @@ export default function LandingPage() {
       <div className="border-t border-border bg-bg-alt px-6 py-24 text-center sm:px-16">
         <NetRule className="mx-auto mb-12 max-w-sm" />
         <h2 className="font-display text-4xl font-bold">Ready to play?</h2>
-        <p className="mt-4 text-text-dim">Open to all Northeastern students, faculty, and staff.</p>
+        <p className="mt-4 text-text-dim">
+          Open to all Northeastern students, faculty, and staff.
+        </p>
         <Link
           href="/login?mode=signup"
-          className="mt-8 inline-block rounded-[10px] bg-nu px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-nu-deep"
+          className="mt-8 inline-block whitespace-nowrap rounded-[10px] bg-nu px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-nu-deep"
         >
           Join the Club
         </Link>
         <div className="mx-auto mt-16 max-w-2xl border-t border-border pt-7 text-xs text-text-faint">
-          © NU Ping Pong Club — an independent student organization,
-          not affiliated with Northeastern Athletics.
+          © NU Ping Pong Club — an independent student organization, not
+          affiliated with Northeastern Athletics.
         </div>
       </div>
     </div>

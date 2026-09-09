@@ -187,6 +187,30 @@ React state at all: it reads the class on click, and both icons are swapped in
 CSS. All six tier colours have dark variants — tier 6 inverts from near-black
 to near-white, still the rarest-looking of the six.
 
+**The mark** ([`components/NMark.tsx`](components/NMark.tsx)) is a slab N with a
+paddle behind it and the ball resting in the N's upper notch. It has to read as
+an "N" at 20px, so the paddle is a soft white wash that only becomes obvious at
+larger sizes, and the ball has a red ring knocked out around it — without that
+gap the white ball merges into the white letter and stops reading as a ball.
+Regenerate the PWA icons from it if you change it; the generator inlines the
+same paths with literal colours, since an icon file can't resolve CSS
+variables.
+
+**The landing hero** ([`components/HeroScene.tsx`](components/HeroScene.tsx)) is
+the one screen allowed to be atmospheric: a table receding into the dark, the
+husky watching from the back wall, a net in perspective and a ball in play. All
+CSS and inline SVG — no images, no canvas, no animation library — so it still
+ships inside the static shell. It's always dark regardless of theme, because a
+light version looked like an empty page with a table drawn on it.
+
+Everything behind the login stays quiet and light. In-app pages get
+[`HuskyWatermark`](components/HuskyWatermark.tsx) instead: the same husky,
+small, cropped into the top corner at ~3% opacity, so a short leaderboard
+doesn't read as an empty white rectangle. **It needs `isolate` on the page
+container** — a `z-index: -1` child paints *behind* its parent's own background
+unless that parent is a stacking context, so without it the watermark is
+invisible.
+
 **Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
 each of the six tiers its own accent, a paddle in that colour, and one pip per
 level, so tiers are told apart at a glance and climbing one looks like

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { HuskyWatermark } from "@/components/HuskyWatermark";
 import { BottomTabs } from "@/components/BottomTabs";
 import { PeopleTabs } from "@/components/PeopleTabs";
 import { TierBadge } from "@/components/TierBadge";
@@ -25,7 +26,8 @@ type Params = Promise<{
 
 export default function MembersPage({ searchParams }: { searchParams: Params }) {
   return (
-    <div className="pb-tabs min-h-screen bg-bg">
+    <div className="pb-tabs relative isolate min-h-screen bg-bg">
+      <HuskyWatermark />
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>

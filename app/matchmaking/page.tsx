@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { HuskyWatermark } from "@/components/HuskyWatermark";
 import { BottomTabs } from "@/components/BottomTabs";
 import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
@@ -39,7 +40,8 @@ type PlayerRef = {
 // the moment you click through. Each section streams in on its own.
 export default function MatchmakingPage({ searchParams }: { searchParams: Params }) {
   return (
-    <div className="pb-tabs min-h-screen bg-bg">
+    <div className="pb-tabs relative isolate min-h-screen bg-bg">
+      <HuskyWatermark />
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getNavSummary } from "@/lib/nav-summary";
-import { Wordmark } from "@/components/HuskyMark";
+import { Wordmark } from "@/components/NMark";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OnlineCount } from "@/components/OnlineDot";

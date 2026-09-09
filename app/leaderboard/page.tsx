@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { HuskyWatermark } from "@/components/HuskyWatermark";
 import { BottomTabs } from "@/components/BottomTabs";
 import { TierBadge } from "@/components/TierBadge";
 import { PeopleTabs } from "@/components/PeopleTabs";
@@ -16,7 +17,8 @@ import { displayName } from "@/lib/names";
 // The ladder streams into the <Suspense> slot when the query comes back.
 export default function LeaderboardPage() {
   return (
-    <div className="pb-tabs min-h-screen bg-bg">
+    <div className="pb-tabs relative isolate min-h-screen bg-bg">
+      <HuskyWatermark />
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>

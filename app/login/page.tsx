@@ -3,7 +3,7 @@
 import { Suspense, useActionState, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { HuskyMark } from "@/components/HuskyMark";
+import { NMark } from "@/components/NMark";
 import { SubmitButton } from "@/components/ActionForm";
 import { signIn, signUp } from "@/app/auth/actions";
 import { safeNext } from "@/lib/safe-next";
@@ -51,7 +51,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Link href="/" aria-label="NU Ping Pong home">
-            <HuskyMark size={44} />
+            <NMark size={44} />
           </Link>
           <h1 className="font-display text-2xl font-bold">
             {isSignUp ? "Join NU Ping Pong" : "Sign in to NU Ping Pong"}
