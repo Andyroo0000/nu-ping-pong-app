@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
+import { HallPicker } from "./HallPicker";
+import { QuickMatchButtons } from "./QuickMatchButtons";
 import { displayName, firstName } from "@/lib/names";
+import { PLAY_STYLES, playStyleLabel } from "@/lib/halls";
 import {
   cancelChallenge,
   findMatchNow,
@@ -27,12 +31,15 @@ type PlayerRef = {
 };
 
 export default async function MatchmakingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+
+  // The suggested-opponent range depends on your own rating, so that one
+  // query has to wait. Everything else goes out at the same time — done
+  // sequentially this page was six round trips deep.
   const { data: me } = await supabase
     .from("profiles")
     .select("id, username, full_name, rating")
@@ -42,35 +49,49 @@ export default async function MatchmakingPage() {
   const myRating = me?.rating ?? 1000;
   const low = myRating - RANGE;
   const high = myRating + RANGE;
-  const nowIso = new Date().toISOString();
 
-  const [{ data: myQueueEntry }, { data: queue }, { data: incoming }, { data: outgoing }] =
-    await Promise.all([
-      supabase.from("queue_entries").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase
-        .from("queue_entries")
-        .select("user_id, location, note, joined_at, profiles(username, full_name, rating)")
-        .neq("user_id", user.id)
-        .gt("expires_at", nowIso)
-        .order("joined_at", { ascending: true })
-        .limit(25),
-      supabase
-        .from("challenges")
-        .select(
-          "id, note, created_at, challenger, profiles!challenges_challenger_fkey(username, full_name, rating)"
-        )
-        .eq("opponent", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("challenges")
-        .select(
-          "id, note, created_at, opponent, profiles!challenges_opponent_fkey(username, full_name, rating)"
-        )
-        .eq("challenger", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: myQueueEntry },
+    { data: queue },
+    { data: incoming },
+    { data: outgoing },
+    { data: candidates },
+  ] = await Promise.all([
+    supabase.from("queue_entries").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("queue_entries")
+      .select(
+        "user_id, location, note, play_style, joined_at, profiles(username, full_name, rating)"
+      )
+      .neq("user_id", user.id)
+      .gt("expires_at", nowIso)
+      .order("joined_at", { ascending: true })
+      .limit(25),
+    supabase
+      .from("challenges")
+      .select(
+        "id, note, created_at, challenger, profiles!challenges_challenger_fkey(username, full_name, rating)"
+      )
+      .eq("opponent", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("challenges")
+      .select(
+        "id, note, created_at, opponent, profiles!challenges_opponent_fkey(username, full_name, rating)"
+      )
+      .eq("challenger", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("id, username, full_name, rating")
+      .neq("id", user.id)
+      .gte("rating", low)
+      .lte("rating", high)
+      .order("rating", { ascending: false })
+      .limit(24),
+  ]);
 
   const inQueue = Boolean(myQueueEntry);
   const pendingOpponentIds = new Set([
@@ -78,15 +99,6 @@ export default async function MatchmakingPage() {
     ...(outgoing ?? []).map((c) => c.opponent),
   ]);
   const queuedIds = new Set((queue ?? []).map((q) => q.user_id));
-
-  const { data: candidates } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, rating")
-    .neq("id", user.id)
-    .gte("rating", low)
-    .lte("rating", high)
-    .order("rating", { ascending: false })
-    .limit(24);
 
   // Closest rating first, and don't re-suggest people already handled above.
   const suggested = (candidates ?? [])
@@ -122,33 +134,26 @@ export default async function MatchmakingPage() {
           </div>
         </div>
 
-        {/* QUEUE */}
+        {/* PLAY NOW */}
         <div className="mt-4 rounded-2xl border border-ink bg-ink-dim p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold">
-                {inQueue ? "You're at the tables" : "Playing right now?"}
-              </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
-                {inQueue
-                  ? myQueueEntry?.location
-                    ? `Listed at ${myQueueEntry.location}. `
-                    : "Other players can pair with you. "
-                  : "Join the queue so people nearby can pair with you. "}
-                {waitingCount > 0
-                  ? `${waitingCount} other player${waitingCount === 1 ? "" : "s"} waiting.`
-                  : "Nobody else is waiting yet."}
-              </p>
-            </div>
+          <div className="text-sm font-bold">
+            {inQueue ? "You're at the tables" : "Playing right now?"}
           </div>
+          <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
+            {inQueue && myQueueEntry
+              ? `Listed at ${myQueueEntry.location ?? "the tables"}${
+                  playStyleLabel(myQueueEntry.play_style)
+                    ? ` for ${playStyleLabel(myQueueEntry.play_style)!.toLowerCase()}`
+                    : ""
+                }. `
+              : "Pick how much you want to play and we'll pair you with whoever's waiting. "}
+            {waitingCount > 0
+              ? `${waitingCount} other player${waitingCount === 1 ? "" : "s"} waiting.`
+              : "Nobody else is waiting yet."}
+          </p>
 
           <ActionForm action={findMatchNow} className="mt-3.5">
-            <SubmitButton
-              pendingLabel="Finding…"
-              className="w-full rounded-xl bg-ink py-3.5 text-sm font-bold text-white"
-            >
-              Match me with someone now
-            </SubmitButton>
+            <QuickMatchButtons />
           </ActionForm>
 
           {inQueue ? (
@@ -161,33 +166,35 @@ export default async function MatchmakingPage() {
               </SubmitButton>
             </ActionForm>
           ) : (
-            <details className="mt-2 group">
+            <details className="mt-2">
               <summary className="cursor-pointer list-none rounded-xl border border-border-strong py-3 text-center text-[13px] font-bold text-text-dim">
-                Join the queue
+                Or list yourself so others can find you
               </summary>
               <ActionForm action={joinQueue} className="mt-2 flex flex-col gap-2">
-                <input
-                  name="location"
-                  placeholder="Where are you? e.g. Oakland rec center tables"
-                  maxLength={120}
-                  className="rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-ink"
-                />
+                <HallPicker />
+                <div className="flex gap-1.5 rounded-[11px] bg-surface p-1">
+                  {PLAY_STYLES.map((style, i) => (
+                    <label
+                      key={style.value}
+                      className="flex-1 cursor-pointer rounded-[9px] py-2 text-center text-[13px] font-bold text-text-dim has-checked:bg-surface-2 has-checked:text-text"
+                    >
+                      <input
+                        type="radio"
+                        name="playStyle"
+                        value={style.value}
+                        defaultChecked={i === 0}
+                        className="sr-only"
+                      />
+                      {style.label}
+                    </label>
+                  ))}
+                </div>
                 <input
                   name="note"
-                  placeholder="Anything to add? e.g. free till 5, happy to teach"
+                  placeholder="Anything to add? e.g. happy to teach a beginner"
                   maxLength={280}
                   className="rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-ink"
                 />
-                <select
-                  name="minutes"
-                  defaultValue="90"
-                  className="rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-ink"
-                >
-                  <option value="30">Available for 30 minutes</option>
-                  <option value="60">Available for 1 hour</option>
-                  <option value="90">Available for 1.5 hours</option>
-                  <option value="180">Available for 3 hours</option>
-                </select>
                 <SubmitButton
                   pendingLabel="Joining…"
                   className="rounded-xl bg-ink py-3 text-sm font-bold text-white"
@@ -202,39 +209,36 @@ export default async function MatchmakingPage() {
         {/* INCOMING CHALLENGES */}
         {incoming && incoming.length > 0 && (
           <Section title={`Challenges for you (${incoming.length})`}>
-            {incoming.map((c) => {
-              const player = c.profiles as PlayerRef | null;
-              return (
-                <Row key={c.id} player={player}>
-                  <div className="flex gap-2">
-                    <ActionForm
-                      action={respondToChallenge}
-                      hidden={{ challengeId: c.id, accept: "true" }}
-                      quiet
+            {incoming.map((c) => (
+              <Row key={c.id} player={c.profiles as PlayerRef | null} note={c.note}>
+                <div className="flex gap-2">
+                  <ActionForm
+                    action={respondToChallenge}
+                    hidden={{ challengeId: c.id, accept: "true" }}
+                    quiet
+                  >
+                    <SubmitButton
+                      pendingLabel="…"
+                      className="rounded-[9px] bg-ink px-3.5 py-2.5 text-xs font-bold text-white"
                     >
-                      <SubmitButton
-                        pendingLabel="…"
-                        className="rounded-[9px] bg-ink px-3.5 py-2.5 text-xs font-bold text-white"
-                      >
-                        Accept
-                      </SubmitButton>
-                    </ActionForm>
-                    <ActionForm
-                      action={respondToChallenge}
-                      hidden={{ challengeId: c.id, accept: "false" }}
-                      quiet
+                      Accept
+                    </SubmitButton>
+                  </ActionForm>
+                  <ActionForm
+                    action={respondToChallenge}
+                    hidden={{ challengeId: c.id, accept: "false" }}
+                    quiet
+                  >
+                    <SubmitButton
+                      pendingLabel="…"
+                      className="rounded-[9px] border border-border-strong px-3 py-2.5 text-xs font-bold text-text-dim"
                     >
-                      <SubmitButton
-                        pendingLabel="…"
-                        className="rounded-[9px] border border-border-strong px-3 py-2.5 text-xs font-bold text-text-dim"
-                      >
-                        Decline
-                      </SubmitButton>
-                    </ActionForm>
-                  </div>
-                </Row>
-              );
-            })}
+                      Decline
+                    </SubmitButton>
+                  </ActionForm>
+                </div>
+              </Row>
+            ))}
           </Section>
         )}
 
@@ -259,18 +263,18 @@ export default async function MatchmakingPage() {
         {/* AT THE TABLES NOW */}
         {queue && queue.length > 0 && (
           <Section title="At the tables now">
-            {queue.map((q) => {
-              const player = q.profiles as PlayerRef | null;
-              return (
-                <Row
-                  key={q.user_id}
-                  player={player}
-                  note={[q.location, q.note].filter(Boolean).join(" · ") || null}
-                >
-                  <ChallengeButton opponentId={q.user_id} label="Play" />
-                </Row>
-              );
-            })}
+            {queue.map((q) => (
+              <Row
+                key={q.user_id}
+                player={q.profiles as PlayerRef | null}
+                note={
+                  [playStyleLabel(q.play_style), q.location, q.note].filter(Boolean).join(" · ") ||
+                  null
+                }
+              >
+                <ChallengeButton opponentId={q.user_id} label="Play" />
+              </Row>
+            ))}
           </Section>
         )}
 
@@ -347,7 +351,10 @@ function Row({
       <Avatar player={player ?? { username: "?", full_name: null }} size={42} />
       <div className="min-w-0 flex-1">
         {player?.username ? (
-          <Link href={`/profile/${player.username}`} className="truncate text-sm font-bold hover:underline">
+          <Link
+            href={`/profile/${player.username}`}
+            className="truncate text-sm font-bold hover:underline"
+          >
             {name}
           </Link>
         ) : (

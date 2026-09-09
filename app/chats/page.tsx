@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
 import { displayName } from "@/lib/names";
@@ -16,9 +17,7 @@ type Member = {
 
 export default async function ChatsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const { data: memberships } = await supabase

@@ -1,31 +1,28 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { HuskyMark } from "@/components/HuskyMark";
 import { SignOutButton } from "@/components/SignOutButton";
 
 export async function Nav() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getCurrentUser is request-cached, so this reuses the lookup the page
+  // already did rather than paying for a second one.
+  const user = await getCurrentUser();
 
   let username: string | null = null;
   let unread = 0;
   let openChallenges = 0;
 
   if (user) {
-    const [{ data: profile }, { data: unreadRows }, { count: challengeCount }] = await Promise.all([
-      supabase.from("profiles").select("username").eq("id", user.id).single(),
-      supabase.rpc("unread_summary"),
-      supabase
-        .from("challenges")
-        .select("id", { count: "exact", head: true })
-        .eq("opponent", user.id)
-        .eq("status", "pending"),
-    ]);
-    username = profile?.username ?? null;
-    unread = (unreadRows ?? []).reduce((total, row) => total + row.unread, 0);
-    openChallenges = challengeCount ?? 0;
+    // One round trip for the username, the unread total, and the pending
+    // challenge count. This renders on every signed-in page, so what used to
+    // be three separate queries was three round trips per navigation.
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("nav_summary");
+    const summary = data?.[0];
+    username = summary?.username ?? null;
+    unread = summary?.unread ?? 0;
+    openChallenges = summary?.pending_challenges ?? 0;
   }
 
   return (

@@ -33,9 +33,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims verifies the JWT locally (WebCrypto) when the Supabase project
+  // uses asymmetric signing keys, and refreshes the session when it's close to
+  // expiring. getUser() would instead hit the Auth server on every single
+  // request this proxy sees — including prefetches — which is the difference
+  // between a few milliseconds and a full round trip per navigation.
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims?.claims?.sub ? claims.claims : null;
 
   const { pathname } = request.nextUrl;
 

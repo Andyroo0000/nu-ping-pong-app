@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { Avatar } from "@/components/Avatar";
@@ -7,9 +8,7 @@ import { displayName } from "@/lib/names";
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const { data: players } = await supabase
     .from("profiles")

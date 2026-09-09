@@ -8,6 +8,7 @@ export type MatchStatus = "pending" | "confirmed" | "declined";
 export type ChallengeStatus = "pending" | "accepted" | "declined" | "cancelled";
 export type ChannelKind = "match" | "club";
 export type MessageKind = "user" | "system";
+export type PlayStyle = "quick" | "long";
 
 export interface Database {
   public: {
@@ -256,6 +257,7 @@ export interface Database {
           user_id: string;
           location: string | null;
           note: string | null;
+          play_style: PlayStyle;
           joined_at: string;
           expires_at: string;
         };
@@ -263,6 +265,7 @@ export interface Database {
           user_id: string;
           location?: string | null;
           note?: string | null;
+          play_style?: PlayStyle;
           joined_at?: string;
           expires_at?: string;
         };
@@ -291,11 +294,19 @@ export interface Database {
         Returns: string;
       };
       join_queue: {
-        Args: { p_location?: string | null; p_note?: string | null; p_minutes?: number };
+        Args: {
+          p_location?: string | null;
+          p_note?: string | null;
+          p_play_style?: PlayStyle;
+        };
         Returns: undefined;
       };
       leave_queue: { Args: Record<string, never>; Returns: undefined };
-      find_match: { Args: Record<string, never>; Returns: string | null };
+      find_match: { Args: { p_play_style?: PlayStyle | null }; Returns: string | null };
+      nav_summary: {
+        Args: Record<string, never>;
+        Returns: { username: string; unread: number; pending_challenges: number }[];
+      };
       mark_channel_read: { Args: { p_channel_id: string }; Returns: undefined };
       unread_summary: {
         Args: Record<string, never>;

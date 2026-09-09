@@ -14,8 +14,13 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      `@northeastern.edu` sign-up restriction, and the `confirm_match` /
      `decline_match` functions that update Elo ratings (K = 32).
    - [`supabase/migrations/0002_matchmaking_and_chat.sql`](supabase/migrations/0002_matchmaking_and_chat.sql) —
-     the matchmaking queue, challenges, and chat channels. Additive: safe to
-     run on a database that already has 0001 applied and real data in it.
+     the matchmaking queue, challenges, and chat channels.
+   - [`supabase/migrations/0003_play_style_and_nav_summary.sql`](supabase/migrations/0003_play_style_and_nav_summary.sql) —
+     quick/long play styles, and the `nav_summary()` function that collapses
+     the nav's three queries into one.
+
+   0002 and 0003 are additive: safe to run on a database that already has
+   real players and matches in it.
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
    "check your email" message instead of being signed straight in).
@@ -62,11 +67,16 @@ any `@northeastern.edu` email and a password.
   Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
   derived from rating.
 - **Matchmaking** (`app/matchmaking`) — three ways to find someone:
-  - *Match me with someone now* (`find_match`) pairs you instantly with the
-    closest-rated player in the queue and drops you both into a chat.
-  - *Join the queue* (`join_queue`) lists you as at the tables, with an
-    optional location, note, and how long you're around for; entries expire on
-    their own so the list doesn't go stale.
+  - *Quick play / Long play* (`find_match`) pairs you instantly with the
+    closest-rated player waiting, preferring someone who wants the same kind
+    of session — one match, or sticking around for a few. It's only a
+    preference: being paired with anyone beats being paired with nobody.
+  - *List yourself* (`join_queue`) puts you on the "at the tables now" list
+    with a hall and your play style. Halls come from a dropdown built from
+    [`lib/halls.ts`](lib/halls.ts) — edit that list to add or rename one —
+    with a "Somewhere else…" option for spots that aren't on it. Entries
+    expire after two hours so the list doesn't go stale; the app doesn't ask
+    how long you'll be there, since that's easier to sort out in chat.
   - *Challenge* (`send_challenge`) invites a specific player. They accept or
     decline from their own matchmaking page. Mutual challenges auto-accept
     rather than leaving two mirrored invitations hanging.
@@ -76,6 +86,25 @@ any `@northeastern.edu` email and a password.
   icebreaker suggestions, since the point is helping people who don't know
   each other start talking. Unread counts come from `unread_summary()` and
   show in the nav.
+
+### Keeping page loads fast
+
+Every Supabase query is a network round trip, and they add up quickly when
+they're serial. Two things keep the count down:
+
+- `getCurrentUser()` in [`lib/auth.ts`](lib/auth.ts) is wrapped in React's
+  `cache()`, so a page and the `<Nav />` it renders share one auth lookup
+  instead of each doing their own. It uses `getClaims()` rather than
+  `getUser()`: with asymmetric JWT signing keys the token is verified locally
+  via WebCrypto and costs no round trip at all. **If your project still uses
+  the legacy symmetric JWT secret, migrating to ECC keys in Project Settings →
+  JWT Keys is the single biggest speed-up available** — it turns three
+  auth round trips per navigation into zero.
+- Page queries are issued with `Promise.all` rather than awaited one at a
+  time, and the nav's data comes from a single `nav_summary()` call.
+
+It's also worth checking that your Vercel region and Supabase region are on
+the same coast. Every query pays that distance, several times per page.
 
 ### Security model
 
@@ -97,4 +126,5 @@ client can't add itself to someone else's conversation.
 - Username is derived from the email prefix (`jdoe@northeastern.edu` → `jdoe`)
   and isn't editable in the UI yet. Display names come from the sign-up form
   and fall back to `@username` when unset.
-- The queue is a flat list — no per-table or per-time-slot scheduling.
+- The queue is a flat list — no per-table or per-time-slot scheduling, and
+  no way to say when you'll arrive (only that you're there now).

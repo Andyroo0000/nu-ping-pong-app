@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
@@ -16,9 +17,7 @@ export default async function ProfilePage({
   const { username } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const { data: profile } = await supabase
     .from("profiles")

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchGame } from "@/lib/database.types";
+import { normalizePlayStyle, OTHER_HALL } from "@/lib/halls";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -155,20 +156,31 @@ export async function cancelChallenge(formData: FormData): Promise<ActionResult>
 }
 
 export async function joinQueue(formData: FormData): Promise<ActionResult> {
-  const location = String(formData.get("location") ?? "").slice(0, 120);
+  const location = readHall(formData);
   const note = String(formData.get("note") ?? "").slice(0, 280);
-  const minutes = Number(formData.get("minutes") ?? 90);
+  const playStyle = normalizePlayStyle(formData.get("playStyle"));
+
+  if (!location) return { ok: false, error: "Pick where you're playing first." };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("join_queue", {
-    p_location: location || null,
+    p_location: location,
     p_note: note || null,
-    p_minutes: Number.isFinite(minutes) ? minutes : 90,
+    p_play_style: playStyle,
   });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/matchmaking");
   return { ok: true, message: "You're in the queue. Other players can pair with you now." };
+}
+
+/** The dropdown posts a sentinel when the player chose "Somewhere else". */
+function readHall(formData: FormData): string | null {
+  const hall = String(formData.get("hall") ?? "").trim();
+  if (hall === OTHER_HALL) {
+    return String(formData.get("otherHall") ?? "").trim().slice(0, 120) || null;
+  }
+  return hall.slice(0, 120) || null;
 }
 
 // Takes FormData it doesn't need so it can be used with <form action={…}>.
@@ -186,11 +198,11 @@ export async function leaveQueue(_formData?: FormData): Promise<ActionResult> {
  * Pair with the closest-rated player currently waiting. Redirects straight
  * into the new chat so the two of them start talking immediately.
  */
-// Takes FormData it doesn't need so it can be used with <form action={…}>.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function findMatchNow(_formData?: FormData): Promise<ActionResult> {
+export async function findMatchNow(formData?: FormData): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data: channelId, error } = await supabase.rpc("find_match");
+  const { data: channelId, error } = await supabase.rpc("find_match", {
+    p_play_style: normalizePlayStyle(formData?.get("playStyle")),
+  });
   if (error) return { ok: false, error: error.message };
   if (!channelId) {
     return {
