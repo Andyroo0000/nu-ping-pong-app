@@ -155,25 +155,6 @@ export async function cancelChallenge(formData: FormData): Promise<ActionResult>
   return { ok: true, message: "Challenge withdrawn." };
 }
 
-export async function joinQueue(formData: FormData): Promise<ActionResult> {
-  const location = readHall(formData);
-  const note = String(formData.get("note") ?? "").slice(0, 280);
-  const playStyle = normalizePlayStyle(formData.get("playStyle"));
-
-  if (!location) return { ok: false, error: "Pick where you're playing first." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("join_queue", {
-    p_location: location,
-    p_note: note || null,
-    p_play_style: playStyle,
-  });
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath("/matchmaking");
-  return { ok: true, message: "You're in the queue. Other players can pair with you now." };
-}
-
 /** The dropdown posts a sentinel when the player chose "Somewhere else". */
 function readHall(formData: FormData): string | null {
   const hall = String(formData.get("hall") ?? "").trim();
