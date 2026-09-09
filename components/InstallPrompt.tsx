@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { isIos, isStandalone } from "@/lib/push-client";
+import { IosInstallSteps } from "@/components/IosInstallSteps";
 import { invalidateBrowserValues, useBrowserValue } from "@/lib/use-browser-value";
 
 type BeforeInstallPromptEvent = Event & {
@@ -67,9 +68,14 @@ export function InstallPrompt() {
         <div className="text-sm font-bold">Put NU Ping Pong on your home screen</div>
         <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
           {showIosHint
-            ? "Tap Share, then “Add to Home Screen”. On iPhone that's also what turns notifications on."
+            ? "Opens like a real app — and on iPhone it's the only way to get notified when someone challenges you. Takes about 15 seconds:"
             : "Opens like an app, and it's how you get notified when someone challenges you."}
         </p>
+        {showIosHint && (
+          <div className="mt-3">
+            <IosInstallSteps />
+          </div>
+        )}
         {deferred && (
           <button
             type="button"

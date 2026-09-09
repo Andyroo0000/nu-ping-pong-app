@@ -34,6 +34,22 @@ export function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 }
 
+/**
+ * Which browser this is on iOS. Only Safari can add a web app to the home
+ * screen there, and only a home-screen web app can receive notifications — so
+ * someone reading the install steps in Chrome needs telling before anything
+ * else.
+ */
+export function iosBrowser(): "safari" | "chrome" | "firefox" | "edge" | "other" {
+  if (typeof window === "undefined") return "other";
+  const ua = window.navigator.userAgent;
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS/.test(ua)) return "firefox";
+  if (/EdgiOS/.test(ua)) return "edge";
+  if (/Safari/.test(ua)) return "safari";
+  return "other";
+}
+
 export function pushSupported(): boolean {
   return (
     typeof window !== "undefined" &&
