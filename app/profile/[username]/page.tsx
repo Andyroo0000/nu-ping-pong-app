@@ -8,7 +8,8 @@ import { TierBadge } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
-import { displayName, initials } from "@/lib/names";
+import { displayName } from "@/lib/names";
+import { availabilityLabels, playPreferenceLabel, yearLabel } from "@/lib/profile";
 import { confirmMatch, declineMatch } from "@/app/actions";
 
 type Params = Promise<{ username: string }>;
@@ -36,7 +37,9 @@ async function ProfileBody({ params }: { params: Params }) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, full_name, rating, wins, losses, created_at")
+    .select(
+      "id, username, full_name, rating, wins, losses, created_at, bio, year, home_hall, availability, play_preference, avatar_path"
+    )
     .eq("username", username)
     .single();
 
@@ -44,8 +47,13 @@ async function ProfileBody({ params }: { params: Params }) {
 
   const isOwnProfile = user?.id === profile.id;
 
-  const [{ count: rank }, { data: history }, { data: matches }, { data: pending }] =
-    await Promise.all([
+  const [
+    { count: rank },
+    { data: history },
+    { data: matches },
+    { data: pending },
+    { data: casual },
+  ] = await Promise.all([
       supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
@@ -58,7 +66,7 @@ async function ProfileBody({ params }: { params: Params }) {
       supabase
         .from("matches")
         .select(
-          "id, player_a, player_b, winner, rating_delta, confirmed_at, games_won_a, games_won_b, profiles_a:profiles!player_a(full_name, username), profiles_b:profiles!player_b(full_name, username)"
+          "id, player_a, player_b, winner, rating_delta, confirmed_at, games_won_a, games_won_b, is_ranked, profiles_a:profiles!player_a(full_name, username), profiles_b:profiles!player_b(full_name, username)"
         )
         .or(`player_a.eq.${profile.id},player_b.eq.${profile.id}`)
         .eq("status", "confirmed")
@@ -72,14 +80,19 @@ async function ProfileBody({ params }: { params: Params }) {
         .eq("player_b", profile.id)
         .eq("status", "pending")
         .order("played_at", { ascending: false }),
+      supabase.rpc("casual_record", { p_player: profile.id }),
     ]);
+
+  const casualRecord = casual?.[0] ?? { wins: 0, losses: 0 };
+  const casualTotal = casualRecord.wins + casualRecord.losses;
 
   const totalMatches = profile.wins + profile.losses;
   const winRate = totalMatches > 0 ? Math.round((profile.wins / totalMatches) * 100) : 0;
 
   let streak = 0;
-  if (matches) {
-    for (const m of matches) {
+  const rankedMatches = (matches ?? []).filter((m) => m.is_ranked);
+  {
+    for (const m of rankedMatches) {
       const won = m.winner === profile.id;
       if (streak === 0) streak = won ? 1 : -1;
       else if ((streak > 0) === won) streak += won ? 1 : -1;
@@ -90,9 +103,11 @@ async function ProfileBody({ params }: { params: Params }) {
   return (
     <div className="mx-auto max-w-md px-6 py-10">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-ink-bright bg-ink-dim font-display text-2xl font-bold">
-            {initials(profile)}
-          </div>
+          <Avatar
+            player={profile}
+            size={80}
+            className="border-[3px] border-ink-bright font-display text-2xl"
+          />
           <div className="mt-3 text-xl font-bold">{displayName(profile)}</div>
           <div className="text-sm font-semibold text-text-faint">@{profile.username}</div>
           <TierBadge rating={profile.rating} className="mt-3" />
@@ -102,13 +117,50 @@ async function ProfileBody({ params }: { params: Params }) {
           <div className="text-sm font-semibold text-text-faint">
             Rank #{(rank ?? 0) + 1} overall
           </div>
+
+          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+            <Chip>{playPreferenceLabel(profile.play_preference)}</Chip>
+            {yearLabel(profile.year) && <Chip>{yearLabel(profile.year)}</Chip>}
+            {profile.home_hall && <Chip>{profile.home_hall}</Chip>}
+          </div>
+
+          {profile.bio && (
+            <p className="mt-4 whitespace-pre-wrap text-left text-sm leading-relaxed text-text-dim">
+              {profile.bio}
+            </p>
+          )}
+
+          {availabilityLabels(profile.availability).length > 0 && (
+            <div className="mt-4 w-full rounded-xl border border-border bg-surface p-3.5 text-left">
+              <div className="text-xs font-bold text-text-faint">USUALLY PLAYS</div>
+              <div className="mt-1.5 text-[13px] font-semibold">
+                {availabilityLabels(profile.availability).join(" · ")}
+              </div>
+            </div>
+          )}
+
+          {isOwnProfile && (
+            <Link
+              href="/profile/edit"
+              className="mt-4 rounded-xl border border-border-strong px-4 py-2.5 text-[13px] font-bold"
+            >
+              Edit profile
+            </Link>
+          )}
         </div>
 
         <div className="mt-7 grid grid-cols-3 gap-2.5">
           <Stat value={`${winRate}%`} label="Win rate" />
           <Stat value={String(Math.abs(streak))} label={streak >= 0 ? "Win streak" : "Loss streak"} />
-          <Stat value={String(totalMatches)} label="Matches" />
+          <Stat value={String(totalMatches)} label="Ranked" />
         </div>
+
+        {casualTotal > 0 && (
+          <p className="mt-2.5 text-center text-xs font-semibold text-text-faint">
+            Plus {casualRecord.wins}W–{casualRecord.losses}L in casual games, which don&rsquo;t
+            affect rating.
+          </p>
+        )}
 
         {isOwnProfile && pending && pending.length > 0 && (
           <div className="mt-8">
@@ -178,10 +230,18 @@ async function ProfileBody({ params }: { params: Params }) {
                     {m.confirmed_at ? new Date(m.confirmed_at).toLocaleDateString() : ""}
                   </div>
                 </div>
-                <div className={`font-display text-sm font-bold ${won ? "text-text" : "text-text-faint"}`}>
-                  {won ? "+" : "−"}
-                  {m.rating_delta ?? 0}
-                </div>
+                {m.is_ranked ? (
+                  <div
+                    className={`font-display text-sm font-bold ${
+                      won ? "text-text" : "text-text-faint"
+                    }`}
+                  >
+                    {won ? "+" : "−"}
+                    {m.rating_delta ?? 0}
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-bold text-text-faint">Casual</div>
+                )}
               </div>
             );
           })}
@@ -204,6 +264,14 @@ async function ProfileBody({ params }: { params: Params }) {
           </div>
       )}
     </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-border-strong bg-surface-2 px-3 py-1 text-xs font-bold">
+      {children}
+    </span>
   );
 }
 

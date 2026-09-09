@@ -21,9 +21,13 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0004_hall_matchmaking.sql`](supabase/migrations/0004_hall_matchmaking.sql) —
      hall-scoped matching, joining a player who's waiting elsewhere, and the
      `active_queue` view.
+   - [`supabase/migrations/0005_profiles_and_casual_play.sql`](supabase/migrations/0005_profiles_and_casual_play.sql) —
+     profile pictures, bios, casual matches, and a **security fix**: see
+     [Security model](#security-model).
 
-   0002 through 0004 are additive: safe to run on a database that already has
-   real players and matches in it.
+   0002 through 0005 are additive: safe to run on a database that already has
+   real players and matches in it. 0005 also creates the `avatars` storage
+   bucket, so no manual setup is needed in the Storage dashboard.
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
    "check your email" message instead of being signed straight in).
@@ -63,6 +67,19 @@ any `@northeastern.edu` email and a password.
   profile page ("Awaiting Your Confirmation"). Ratings only change on
   confirmation, via the `confirm_match` Postgres function — this keeps the
   rating math atomic and stops a player from unilaterally rating themselves up.
+- **Profiles** (`app/profile/edit`) — a photo, a short bio, year, home hall,
+  when you usually play, and whether you're here for casual or competitive
+  games. Photos go straight from the browser to Supabase Storage after being
+  cropped square and shrunk to 512px on the device
+  ([`lib/resize-image.ts`](lib/resize-image.ts)), so a 5MB phone photo lands as
+  a ~40KB WebP and never crosses the server. Players without a photo or bio get
+  a nudge on the matchmaking page.
+- **Casual vs ranked** — when logging a match you pick *Ranked* (counts toward
+  Elo) or *Casual* (doesn't). Both need the opponent's confirmation and both
+  show on your profile; casual games are tallied separately by
+  `casual_record()` and don't touch rating, win/loss, or your streak.
+  Matchmaking prefers to pair like with like, so someone here to rally isn't
+  handed to someone chasing a rating.
 - **Ratings** — standard Elo, K = 32, computed server-side in SQL. The number
   shown while filling out the log-match form (`lib/elo.ts`) is a preview only;
   the database function is the source of truth.
@@ -144,6 +161,24 @@ involved. Creating channels, adding members, and answering challenges all go
 through security-definer functions rather than direct table writes, so a
 client can't add itself to someone else's conversation.
 
+**Row level security controls which rows a policy applies to, never which
+columns.** 0001's "Users can update their own profile" policy therefore let any
+signed-in player `PATCH` their own row with `{"rating": 9999, "wins": 500}` and
+top the leaderboard. The anon key ships in the browser bundle, so that endpoint
+is reachable by anyone with an account — nothing in the app ever did it, but the
+ladder was writable. 0005 fixes it with column-level grants: `rating`, `wins`
+and `losses` stay readable, but are writable only by `confirm_match()`, which
+runs as the table owner. **If you add a column to `profiles` that players
+should be able to edit, add it to that `grant update (...)` list** or saving
+will fail.
+
+Avatars live in a *public* storage bucket, so image URLs need no signing and a
+plain `<img>` can load them. Paths are `<user-id>/<random>.webp`, so a URL
+isn't guessable, but anyone holding one can open it without signing in — the
+usual trade for avatars. Writes are confined to a folder named after your own
+user id. To make them members-only, flip the bucket to private and switch
+[`lib/avatar.ts`](lib/avatar.ts) to `createSignedUrl()`.
+
 ## Known simplifications
 
 - No push/email notification when someone challenges you or sends a message —
@@ -154,5 +189,11 @@ client can't add itself to someone else's conversation.
 - Username is derived from the email prefix (`jdoe@northeastern.edu` → `jdoe`)
   and isn't editable in the UI yet. Display names come from the sign-up form
   and fall back to `@username` when unset.
+- No moderation tooling for profile photos or bios, and no way to report a
+  player. Fine for a club that knows each other; the first thing to add if that
+  stops being true.
+- No members directory — the leaderboard is the only way to browse people, and
+  it's sorted by rating, which isn't the friendliest front door for someone
+  who's here casually.
 - The queue is a flat list — no per-table or per-time-slot scheduling, and
   no way to say when you'll arrive (only that you're there now).

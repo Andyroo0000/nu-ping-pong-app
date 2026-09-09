@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchGame } from "@/lib/database.types";
 import { normalizePlayStyle, OTHER_HALL } from "@/lib/halls";
+import { AVAILABILITY_VALUES, normalizePlayPreference, YEAR_VALUES } from "@/lib/profile";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -22,6 +23,9 @@ export async function reportMatch(formData: FormData): Promise<ActionResult> {
 
   const opponentId = String(formData.get("opponentId") ?? "");
   const gamesRaw = String(formData.get("games") ?? "[]");
+  // Ranked unless the player explicitly said casual, so an unfamiliar or
+  // missing value can never silently stop a result from counting.
+  const isRanked = String(formData.get("matchKind") ?? "ranked") !== "casual";
 
   let games: MatchGame[];
   try {
@@ -72,6 +76,7 @@ export async function reportMatch(formData: FormData): Promise<ActionResult> {
     games_won_b: gamesWonB,
     winner,
     reported_by: user.id,
+    is_ranked: isRanked,
   });
   if (insertError) return { ok: false, error: insertError.message };
 
@@ -217,6 +222,98 @@ export async function pairWithPlayer(formData: FormData): Promise<ActionResult> 
   revalidatePath("/matchmaking");
   revalidatePath("/chats");
   redirect(`/chats/${channelId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
+export async function saveProfile(formData: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const fullName = String(formData.get("fullName") ?? "").trim().slice(0, 80);
+  if (!fullName) {
+    return { ok: false, error: "Add your name so people know who they're playing." };
+  }
+
+  const bio = String(formData.get("bio") ?? "").trim().slice(0, 400);
+  const yearRaw = String(formData.get("year") ?? "");
+  const homeHall = readHall(formData);
+  const availability = formData
+    .getAll("availability")
+    .map(String)
+    .filter((slot) => AVAILABILITY_VALUES.includes(slot));
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      full_name: fullName,
+      bio: bio || null,
+      year: YEAR_VALUES.includes(yearRaw) ? yearRaw : null,
+      home_hall: homeHall,
+      availability,
+      play_preference: normalizePlayPreference(formData.get("playPreference")),
+    })
+    .eq("id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
+  revalidatePath("/leaderboard");
+  revalidatePath("/matchmaking");
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+  redirect(`/profile/${profile?.username ?? ""}`);
+}
+
+/**
+ * Record a freshly uploaded avatar. The file itself goes straight from the
+ * browser to Supabase Storage — routing megabytes through a Server Action
+ * would be slower and runs into request body limits — so this only saves the
+ * resulting path and clears out the previous file.
+ */
+export async function setAvatarPath(formData: FormData): Promise<ActionResult> {
+  const path = String(formData.get("path") ?? "").trim();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Storage policies already confine writes to a folder named after the
+  // player's id; check it here too so a stray path can't be recorded.
+  if (path && !path.startsWith(`${user.id}/`)) {
+    return { ok: false, error: "That image doesn't belong to your profile." };
+  }
+
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("avatar_path, username")
+    .eq("id", user.id)
+    .single();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_path: path || null })
+    .eq("id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  if (existing?.avatar_path && existing.avatar_path !== path) {
+    await supabase.storage.from("avatars").remove([existing.avatar_path]);
+  }
+
+  revalidatePath("/leaderboard");
+  revalidatePath("/matchmaking");
+  if (existing?.username) revalidatePath(`/profile/${existing.username}`);
+  return { ok: true };
 }
 
 export async function sendMessage(formData: FormData): Promise<ActionResult> {

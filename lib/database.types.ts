@@ -9,6 +9,7 @@ export type ChallengeStatus = "pending" | "accepted" | "declined" | "cancelled";
 export type ChannelKind = "match" | "club";
 export type MessageKind = "user" | "system";
 export type PlayStyle = "quick" | "long";
+export type PlayPreference = "casual" | "competitive" | "both";
 
 export interface Database {
   public: {
@@ -22,6 +23,12 @@ export interface Database {
           wins: number;
           losses: number;
           created_at: string;
+          bio: string | null;
+          year: string | null;
+          home_hall: string | null;
+          availability: string[];
+          play_preference: PlayPreference;
+          avatar_path: string | null;
         };
         Insert: {
           id: string;
@@ -31,6 +38,12 @@ export interface Database {
           wins?: number;
           losses?: number;
           created_at?: string;
+          bio?: string | null;
+          year?: string | null;
+          home_hall?: string | null;
+          availability?: string[];
+          play_preference?: PlayPreference;
+          avatar_path?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
@@ -49,6 +62,7 @@ export interface Database {
           rating_delta: number | null;
           played_at: string;
           confirmed_at: string | null;
+          is_ranked: boolean;
         };
         Insert: {
           id?: string;
@@ -63,6 +77,7 @@ export interface Database {
           rating_delta?: number | null;
           played_at?: string;
           confirmed_at?: string | null;
+          is_ranked?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["matches"]["Insert"]>;
         Relationships: [
@@ -329,6 +344,10 @@ export interface Database {
         Returns: string | null;
       };
       pair_with_player: { Args: { p_opponent: string }; Returns: string };
+      casual_record: {
+        Args: { p_player: string };
+        Returns: { wins: number; losses: number }[];
+      };
       queue_elsewhere: {
         Args: { p_hall?: string | null };
         Returns: {

@@ -8,6 +8,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
+import { ProfileNudge } from "@/components/ProfileNudge";
 import { MatchmakingForm } from "./MatchmakingForm";
 import { displayName } from "@/lib/names";
 import { playStyleLabel } from "@/lib/halls";
@@ -43,6 +44,10 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
         <p className="mt-1 text-sm text-text-dim">
           Say which hall you&rsquo;re in and we&rsquo;ll pair you with someone there.
         </p>
+
+        <Suspense fallback={null}>
+          <ProfileNudge />
+        </Suspense>
 
         <Suspense fallback={<CardSkeleton className="mt-5" />}>
           <RatingCard />

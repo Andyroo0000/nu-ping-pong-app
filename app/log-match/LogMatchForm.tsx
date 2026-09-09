@@ -27,6 +27,7 @@ export function LogMatchForm() {
   const [results, setResults] = useState<OpponentOption[]>([]);
   const [opponent, setOpponent] = useState<OpponentOption | null>(null);
 
+  const [matchKind, setMatchKind] = useState<"ranked" | "casual">("ranked");
   const [format, setFormat] = useState<3 | 5>(3);
   const [games, setGames] = useState<{ a: string; b: string }[]>([
     { a: "", b: "" },
@@ -107,10 +108,11 @@ export function LogMatchForm() {
   const iWon = gamesWonMe > gamesWonOpp;
   const hasResult = filledGames.length > 0 && gamesWonMe !== gamesWonOpp;
 
+  const isRanked = matchKind === "ranked";
   let myNewRating: number | null = null;
   let oppNewRating: number | null = null;
   let delta = 0;
-  if (hasResult && myRating != null && opponent) {
+  if (isRanked && hasResult && myRating != null && opponent) {
     delta = iWon
       ? winnerRatingDelta(myRating, opponent.rating)
       : -winnerRatingDelta(opponent.rating, myRating);
@@ -136,6 +138,7 @@ export function LogMatchForm() {
     const fd = new FormData();
     fd.set("opponentId", opponent.id);
     fd.set("games", JSON.stringify(filledGames));
+    fd.set("matchKind", matchKind);
     // The callback has to be awaited inside the transition, otherwise
     // isPending flips back to false immediately and the button never shows
     // that anything is happening.
@@ -219,6 +222,33 @@ export function LogMatchForm() {
         </div>
 
         <div>
+          <Label>Match type</Label>
+          <div className="mt-2 flex gap-1.5 rounded-[11px] bg-surface p-1">
+            {(
+              [
+                { value: "ranked", label: "Ranked", blurb: "Counts toward your rating" },
+                { value: "casual", label: "Casual", blurb: "Just for fun, no rating change" },
+              ] as const
+            ).map((option) => (
+              <button
+                type="button"
+                key={option.value}
+                onClick={() => setMatchKind(option.value)}
+                aria-pressed={matchKind === option.value}
+                className={`flex-1 rounded-[9px] px-2 py-2.5 ${
+                  matchKind === option.value ? "bg-surface-2 text-text" : "text-text-faint"
+                }`}
+              >
+                <span className="block text-[13px] font-bold">{option.label}</span>
+                <span className="mt-0.5 block text-[10px] font-semibold text-text-faint">
+                  {option.blurb}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <Label>Format</Label>
           <div className="mt-2 flex gap-1.5 rounded-[11px] bg-surface p-1">
             {[3, 5].map((n) => (
@@ -262,7 +292,15 @@ export function LogMatchForm() {
           </div>
         )}
 
-        {hasResult && opponent && myRating != null && (
+        {hasResult && !isRanked && (
+          <p className="rounded-xl border border-border bg-surface px-4 py-3.5 text-[13px] text-text-dim">
+            Casual game — it&rsquo;ll show on both your profiles once
+            {opponent ? ` ${firstName(opponent)}` : " your opponent"} confirms, but nobody&rsquo;s
+            rating moves.
+          </p>
+        )}
+
+        {isRanked && hasResult && opponent && myRating != null && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-3 text-xs font-bold text-text-faint">IF CONFIRMED</div>
             <PreviewRow label="You" from={myRating} to={myNewRating!} />
