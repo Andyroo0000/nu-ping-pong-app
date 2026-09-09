@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
+import { Avatar } from "@/components/Avatar";
+import { displayName } from "@/lib/names";
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
@@ -43,11 +45,9 @@ export default async function LeaderboardPage() {
               }`}
             >
               <div className="w-6 shrink-0 text-sm font-bold text-text-faint">{i + 1}</div>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-bold">
-                {initials(p.full_name)}
-              </div>
+              <Avatar player={p} size={40} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">{p.full_name}</div>
+                <div className="truncate text-sm font-bold">{displayName(p)}</div>
                 <TierBadge rating={p.rating} className="mt-1" />
               </div>
               <div className="shrink-0 text-right">
@@ -72,11 +72,3 @@ export default async function LeaderboardPage() {
   );
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}

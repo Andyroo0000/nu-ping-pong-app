@@ -4,12 +4,13 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { winnerRatingDelta } from "@/lib/elo";
+import { displayName, firstName, initials } from "@/lib/names";
 import { reportMatch } from "@/app/actions";
 
 type OpponentOption = {
   id: string;
   username: string;
-  full_name: string;
+  full_name: string | null;
   rating: number;
 };
 
@@ -78,10 +79,17 @@ export function LogMatchForm() {
         setResults([]);
         return;
       }
+      // Plenty of players have no full name set, so search usernames too.
+      // Commas and parens would break PostgREST's `or` filter grammar.
+      const term = query.trim().replace(/[,()*]/g, "");
+      if (!term) {
+        setResults([]);
+        return;
+      }
       const { data } = await supabase
         .from("profiles")
         .select("id, username, full_name, rating")
-        .ilike("full_name", `%${query}%`)
+        .or(`full_name.ilike.%${term}%,username.ilike.%${term}%`)
         .neq("id", myId)
         .limit(5);
       setResults(data ?? []);
@@ -128,8 +136,16 @@ export function LogMatchForm() {
     const fd = new FormData();
     fd.set("opponentId", opponent.id);
     fd.set("games", JSON.stringify(filledGames));
-    startTransition(() => {
-      reportMatch(fd).catch((err) => setFormError(err.message));
+    // The callback has to be awaited inside the transition, otherwise
+    // isPending flips back to false immediately and the button never shows
+    // that anything is happening.
+    startTransition(async () => {
+      try {
+        const result = await reportMatch(fd);
+        if (result && !result.ok) setFormError(result.error);
+      } catch {
+        setFormError("Couldn't submit that match. Check your connection and try again.");
+      }
     });
   }
 
@@ -155,10 +171,10 @@ export function LogMatchForm() {
           {opponent ? (
             <div className="mt-2 flex items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-xs font-bold">
-                {initials(opponent.full_name)}
+                {initials(opponent)}
               </div>
               <div className="flex-1">
-                <div className="text-[15px] font-bold">{opponent.full_name}</div>
+                <div className="text-[15px] font-bold">{displayName(opponent)}</div>
                 <div className="text-xs font-semibold text-text-faint">
                   {opponent.rating.toLocaleString()} rating
                 </div>
@@ -176,7 +192,7 @@ export function LogMatchForm() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search opponent by name…"
+                placeholder="Search by name or username…"
                 className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-ink"
               />
               {results.length > 0 && (
@@ -192,7 +208,7 @@ export function LogMatchForm() {
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface"
                     >
-                      <span className="text-sm font-bold">{r.full_name}</span>
+                      <span className="text-sm font-bold">{displayName(r)}</span>
                       <span className="text-xs text-text-faint">{r.rating}</span>
                     </button>
                   ))}
@@ -251,7 +267,7 @@ export function LogMatchForm() {
             <div className="mb-3 text-xs font-bold text-text-faint">IF CONFIRMED</div>
             <PreviewRow label="You" from={myRating} to={myNewRating!} />
             <PreviewRow
-              label={opponent.full_name.split(" ")[0]}
+              label={firstName(opponent)}
               from={opponent.rating}
               to={oppNewRating!}
               className="mt-3"
@@ -271,7 +287,7 @@ export function LogMatchForm() {
           </button>
           {opponent && (
             <p className="mt-3 text-center text-xs font-semibold leading-relaxed text-text-faint">
-              {opponent.full_name.split(" ")[0]} will need to confirm this result before ratings
+              {firstName(opponent)} will need to confirm this result before ratings
               update.
             </p>
           )}
@@ -343,11 +359,3 @@ function ArrowIcon() {
   );
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}

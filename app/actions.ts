@@ -5,7 +5,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchGame } from "@/lib/database.types";
 
-export async function reportMatch(formData: FormData) {
+export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+
+/**
+ * Validation problems come back as a value rather than a thrown error: an
+ * uncaught throw inside a Server Action reaches the browser as an opaque
+ * "an error occurred" digest in production, which tells the player nothing.
+ */
+export async function reportMatch(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,16 +30,36 @@ export async function reportMatch(formData: FormData) {
   }
 
   if (!opponentId || opponentId === user.id) {
-    throw new Error("Choose a valid opponent before submitting.");
+    return { ok: false, error: "Choose a valid opponent before submitting." };
   }
-  if (games.length === 0 || games.some((g) => g.a === g.b)) {
-    throw new Error("Enter a final score for at least one game.");
+  if (!Array.isArray(games) || games.length === 0) {
+    return { ok: false, error: "Enter a final score for at least one game." };
+  }
+  if (games.length > 7) {
+    return { ok: false, error: "That's more games than any supported format." };
+  }
+  if (
+    games.some(
+      (g) =>
+        !Number.isInteger(g?.a) ||
+        !Number.isInteger(g?.b) ||
+        g.a < 0 ||
+        g.b < 0 ||
+        g.a > 99 ||
+        g.b > 99 ||
+        g.a === g.b
+    )
+  ) {
+    return {
+      ok: false,
+      error: "Every game needs two whole scores, and a game can't be a tie.",
+    };
   }
 
   const gamesWonA = games.filter((g) => g.a > g.b).length;
   const gamesWonB = games.filter((g) => g.b > g.a).length;
   if (gamesWonA === gamesWonB) {
-    throw new Error("A match can't end in a tie.");
+    return { ok: false, error: "A match can't end in a tie." };
   }
   const winner = gamesWonA > gamesWonB ? user.id : opponentId;
 
@@ -45,7 +72,7 @@ export async function reportMatch(formData: FormData) {
     winner,
     reported_by: user.id,
   });
-  if (insertError) throw new Error(insertError.message);
+  if (insertError) return { ok: false, error: insertError.message };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -72,4 +99,129 @@ export async function declineMatch(formData: FormData) {
   const { error } = await supabase.rpc("decline_match", { p_match_id: matchId });
   if (error) throw new Error(error.message);
   revalidatePath("/profile/[username]", "page");
+}
+
+// ---------------------------------------------------------------------------
+// Matchmaking
+// ---------------------------------------------------------------------------
+
+export async function sendChallenge(formData: FormData): Promise<ActionResult> {
+  const opponentId = String(formData.get("opponentId") ?? "");
+  const note = String(formData.get("note") ?? "").slice(0, 280);
+  if (!opponentId) return { ok: false, error: "Pick someone to challenge first." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("send_challenge", {
+    p_opponent: opponentId,
+    p_note: note || null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  return { ok: true, message: "Challenge sent — you'll get a chat once they accept." };
+}
+
+export async function respondToChallenge(formData: FormData): Promise<ActionResult> {
+  const challengeId = String(formData.get("challengeId") ?? "");
+  const accept = String(formData.get("accept") ?? "") === "true";
+  if (!challengeId) return { ok: false, error: "Missing challenge." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_challenge", {
+    p_challenge_id: challengeId,
+    p_accept: accept,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  revalidatePath("/chats");
+  return {
+    ok: true,
+    message: accept ? "Match on — your chat is ready." : "Challenge declined.",
+  };
+}
+
+export async function cancelChallenge(formData: FormData): Promise<ActionResult> {
+  const challengeId = String(formData.get("challengeId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("challenges")
+    .update({ status: "cancelled", responded_at: new Date().toISOString() })
+    .eq("id", challengeId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  return { ok: true, message: "Challenge withdrawn." };
+}
+
+export async function joinQueue(formData: FormData): Promise<ActionResult> {
+  const location = String(formData.get("location") ?? "").slice(0, 120);
+  const note = String(formData.get("note") ?? "").slice(0, 280);
+  const minutes = Number(formData.get("minutes") ?? 90);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("join_queue", {
+    p_location: location || null,
+    p_note: note || null,
+    p_minutes: Number.isFinite(minutes) ? minutes : 90,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  return { ok: true, message: "You're in the queue. Other players can pair with you now." };
+}
+
+// Takes FormData it doesn't need so it can be used with <form action={…}>.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function leaveQueue(_formData?: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("leave_queue");
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  return { ok: true, message: "You've left the queue." };
+}
+
+/**
+ * Pair with the closest-rated player currently waiting. Redirects straight
+ * into the new chat so the two of them start talking immediately.
+ */
+// Takes FormData it doesn't need so it can be used with <form action={…}>.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function findMatchNow(_formData?: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: channelId, error } = await supabase.rpc("find_match");
+  if (error) return { ok: false, error: error.message };
+  if (!channelId) {
+    return {
+      ok: false,
+      error: "Nobody else is in the queue right now. Join it and we'll pair you when someone is.",
+    };
+  }
+
+  revalidatePath("/matchmaking");
+  revalidatePath("/chats");
+  redirect(`/chats/${channelId}`);
+}
+
+export async function sendMessage(formData: FormData): Promise<ActionResult> {
+  const channelId = String(formData.get("channelId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (!channelId) return { ok: false, error: "Missing channel." };
+  if (!body) return { ok: false, error: "Type a message first." };
+  if (body.length > 2000) return { ok: false, error: "That message is too long (2,000 max)." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("messages")
+    .insert({ channel_id: channelId, author_id: user.id, body, kind: "user" });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/chats/${channelId}`);
+  return { ok: true };
 }

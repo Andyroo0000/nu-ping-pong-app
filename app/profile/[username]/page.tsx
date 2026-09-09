@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
+import { Avatar } from "@/components/Avatar";
+import { displayName, initials } from "@/lib/names";
 import { confirmMatch, declineMatch } from "@/app/actions";
 
 export default async function ProfilePage({
@@ -51,7 +53,7 @@ export default async function ProfilePage({
       supabase
         .from("matches")
         .select(
-          "id, games_won_a, games_won_b, played_at, profiles_a:profiles!player_a(full_name)"
+          "id, games_won_a, games_won_b, played_at, profiles_a:profiles!player_a(full_name, username)"
         )
         .eq("player_b", profile.id)
         .eq("status", "pending")
@@ -77,9 +79,9 @@ export default async function ProfilePage({
       <div className="mx-auto max-w-md px-6 py-10">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-ink-bright bg-ink-dim font-display text-2xl font-bold">
-            {initials(profile.full_name)}
+            {initials(profile)}
           </div>
-          <div className="mt-3 text-xl font-bold">{profile.full_name}</div>
+          <div className="mt-3 text-xl font-bold">{displayName(profile)}</div>
           <div className="text-sm font-semibold text-text-faint">@{profile.username}</div>
           <TierBadge rating={profile.rating} className="mt-3" />
           <div className="mt-3 font-display text-5xl font-bold tracking-tight">
@@ -103,7 +105,7 @@ export default async function ProfilePage({
               {pending.map((m) => (
                 <div key={m.id} className="rounded-xl border border-border-strong bg-surface p-4">
                   <div className="text-sm font-bold">
-                    {m.profiles_a?.full_name ?? "A player"} reported{" "}
+                    {m.profiles_a ? displayName(m.profiles_a) : "A player"} reported{" "}
                     {m.games_won_a}–{m.games_won_b}
                   </div>
                   <div className="mt-1 text-xs font-semibold text-text-faint">
@@ -156,11 +158,9 @@ export default async function ProfilePage({
                 >
                   {won ? "W" : "L"}
                 </div>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-xs font-bold">
-                  {initials(opponent?.full_name ?? "?")}
-                </div>
+                <Avatar player={opponent ?? { username: "?", full_name: null }} size={32} />
                 <div className="flex-1">
-                  <div className="text-sm font-bold">vs. {opponent?.full_name ?? "Unknown"}</div>
+                  <div className="text-sm font-bold">vs. {opponent ? displayName(opponent) : "Unknown"}</div>
                   <div className="text-xs font-semibold text-text-faint">
                     {myGames}–{oppGames} ·{" "}
                     {m.confirmed_at ? new Date(m.confirmed_at).toLocaleDateString() : ""}
@@ -205,11 +205,3 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}

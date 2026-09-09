@@ -20,11 +20,14 @@ export default function LandingPage() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden px-1 py-2 text-sm font-semibold text-text-dim hover:text-text sm:inline">
+          <Link
+            href="/login?mode=signin"
+            className="hidden px-1 py-2 text-sm font-semibold text-text-dim hover:text-text sm:inline"
+          >
             Sign In
           </Link>
           <Link
-            href="/login"
+            href="/login?mode=signup"
             className="rounded-[10px] bg-ink px-6 py-3.5 text-sm font-bold text-white"
           >
             Join the Club
@@ -54,7 +57,7 @@ export default function LandingPage() {
               ELO-style ranking system built for Northeastern&rsquo;s ping pong club.
             </p>
             <div className="mt-1 flex items-center gap-4">
-              <Link href="/login" className="rounded-[10px] bg-ink px-6 py-3.5 text-[15px] font-bold text-white">
+              <Link href="/login?mode=signup" className="rounded-[10px] bg-ink px-6 py-3.5 text-[15px] font-bold text-white">
                 Join the Club
               </Link>
               <Link
@@ -169,7 +172,7 @@ export default function LandingPage() {
         <h2 className="text-4xl font-bold">Ready to play?</h2>
         <p className="mt-4 text-text-dim">Open to all Northeastern students, faculty, and staff.</p>
         <Link
-          href="/login"
+          href="/login?mode=signup"
           className="mt-8 inline-block rounded-[10px] bg-ink px-6 py-3.5 text-[15px] font-bold text-white"
         >
           Join the Club

@@ -1,9 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { Suspense, useActionState, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { HuskyMark } from "@/components/HuskyMark";
+import { SubmitButton } from "@/components/ActionForm";
+import { signIn, signUp } from "@/app/auth/actions";
+import { safeNext } from "@/lib/safe-next";
+import type { ActionResult } from "@/app/actions";
 
 export default function LoginPage() {
   return (
@@ -13,96 +17,136 @@ export default function LoginPage() {
   );
 }
 
+type Mode = "signin" | "signup";
+
 function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/leaderboard";
+  const next = safeNext(searchParams.get("next"));
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const [mode, setMode] = useState<Mode>(
+    searchParams.get("mode") === "signup" ? "signup" : "signin"
+  );
+  const isSignUp = mode === "signup";
 
-    if (!email.toLowerCase().endsWith("@northeastern.edu")) {
-      setError("NU Ping Pong is open to @northeastern.edu addresses only.");
-      setStatus("error");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      setStatus("error");
-      return;
-    }
+  // Held in state so a rejected attempt re-renders with what was typed
+  // instead of making the player enter their email again. The password is
+  // deliberately not kept.
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
 
-    setStatus("working");
-    const supabase = createClient();
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (!signInError) {
-      router.push(next);
-      router.refresh();
-      return;
-    }
-
-    // No account yet with this email/password — create one.
-    if (signInError.message.toLowerCase().includes("invalid login credentials")) {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        setError(signUpError.message);
-        setStatus("error");
-        return;
-      }
-      router.push(next);
-      router.refresh();
-      return;
-    }
-
-    setError(signInError.message);
-    setStatus("error");
-  }
+  // One state slot per mode so switching tabs doesn't carry the other form's
+  // error along with it.
+  const [signInState, signInAction] = useActionState<ActionResult | null, FormData>(
+    (_previous, formData) => signIn(formData),
+    null
+  );
+  const [signUpState, signUpAction] = useActionState<ActionResult | null, FormData>(
+    (_previous, formData) => signUp(formData),
+    null
+  );
+  const state = isSignUp ? signUpState : signInState;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-6">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <HuskyMark size={40} />
-          <h1 className="font-display text-2xl font-bold">Sign in to NU Ping Pong</h1>
+          <Link href="/" aria-label="NU Ping Pong home">
+            <HuskyMark size={40} />
+          </Link>
+          <h1 className="font-display text-2xl font-bold">
+            {isSignUp ? "Join NU Ping Pong" : "Sign in to NU Ping Pong"}
+          </h1>
           <p className="text-sm text-text-dim">
-            Use your Northeastern email. First time here? The same form creates your account.
+            {isSignUp
+              ? "Create your account with your Northeastern email. You'll start at a 1,000 rating."
+              : "Welcome back. Use the Northeastern email you signed up with."}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="mb-5 flex gap-1.5 rounded-[11px] bg-surface p-1">
+          {(["signin", "signup"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              aria-pressed={mode === m}
+              className={`flex-1 rounded-[9px] py-2.5 text-[13px] font-bold ${
+                mode === m ? "bg-surface-2 text-text" : "text-text-faint"
+              }`}
+            >
+              {m === "signin" ? "Sign in" : "Create account"}
+            </button>
+          ))}
+        </div>
+
+        <form
+          key={mode}
+          action={isSignUp ? signUpAction : signInAction}
+          className="flex flex-col gap-3"
+        >
+          <input type="hidden" name="next" value={next} />
+          {isSignUp && (
+            <input
+              type="text"
+              name="fullName"
+              required
+              maxLength={80}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Full name"
+              autoComplete="name"
+              className="rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm outline-none focus:border-ink"
+            />
+          )}
           <input
             type="email"
+            name="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@northeastern.edu"
+            autoComplete="email"
             className="rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm outline-none focus:border-ink"
           />
           <input
             type="password"
+            name="password"
             required
             minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
             className="rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm outline-none focus:border-ink"
           />
-          {error && <p className="text-sm font-medium text-text">{error}</p>}
-          <button
-            type="submit"
-            disabled={status === "working"}
-            className="rounded-xl bg-ink px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+
+          {state && !state.ok && (
+            <p className="rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-sm font-semibold">
+              {state.error}
+            </p>
+          )}
+          {state?.ok && state.message && (
+            <p className="rounded-lg border border-ink bg-ink-dim px-3 py-2.5 text-sm font-semibold">
+              {state.message}
+            </p>
+          )}
+
+          <SubmitButton
+            pendingLabel="Working…"
+            className="rounded-xl bg-ink px-4 py-3 text-sm font-bold text-white"
           >
-            {status === "working" ? "Working…" : "Continue"}
-          </button>
+            {isSignUp ? "Create account" : "Sign in"}
+          </SubmitButton>
         </form>
+
+        <p className="mt-5 text-center text-sm text-text-dim">
+          {isSignUp ? "Already have an account? " : "New to the club? "}
+          <button
+            type="button"
+            onClick={() => setMode(isSignUp ? "signin" : "signup")}
+            className="font-bold underline"
+          >
+            {isSignUp ? "Sign in" : "Create an account"}
+          </button>
+        </p>
       </div>
     </div>
   );
