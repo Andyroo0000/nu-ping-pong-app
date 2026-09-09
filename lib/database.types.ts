@@ -273,6 +273,36 @@ export interface Database {
           },
         ];
       };
+      blocks: {
+        Row: { blocker: string; blocked: string; created_at: string };
+        Insert: { blocker: string; blocked: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["blocks"]["Insert"]>;
+        Relationships: [];
+      };
+      reports: {
+        Row: {
+          id: string;
+          reporter: string;
+          reported: string;
+          reason: string;
+          detail: string | null;
+          channel_id: string | null;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reporter: string;
+          reported: string;
+          reason: string;
+          detail?: string | null;
+          channel_id?: string | null;
+          status?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           endpoint: string;
@@ -380,6 +410,9 @@ export interface Database {
         Returns: string | null;
       };
       pair_with_player: { Args: { p_opponent: string }; Returns: string };
+      open_direct_channel: { Args: { p_other: string }; Returns: string };
+      is_blocked_pair: { Args: { p_a: string; p_b: string }; Returns: boolean };
+      blocked_ids: { Args: Record<string, never>; Returns: string[] };
       casual_record: {
         Args: { p_player: string };
         Returns: { wins: number; losses: number }[];

@@ -41,7 +41,9 @@
   --text-dim: oklch(40% 0.008 25);
   --text-faint: oklch(58% 0.007 25);
 
-  /* "ink" is the near-black used for text-weight surfaces. */
+  /* "ink" is the near-black used for text-weight surfaces. It inverts to
+     near-white in dark mode, so anything sitting on bg-ink must use text-bg
+     (--ink's opposite in both themes) and never a hardcoded text-white. */
   --ink: oklch(14% 0.006 25);
   --ink-bright: var(--nu-accent);
   --ink-dim: var(--nu-red-wash);

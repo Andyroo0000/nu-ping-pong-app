@@ -79,11 +79,19 @@ async function Directory({ searchParams }: { searchParams: Params }) {
     request = request.eq("year", filters.year);
   }
 
-  const { data: players } = await request.order("rating", { ascending: false }).limit(200);
+  const [{ data: players }, { data: blocked }] = await Promise.all([
+    request.order("rating", { ascending: false }).limit(200),
+    supabase.rpc("blocked_ids"),
+  ]);
+
+  // Blocking is mutual in effect: neither side sees the other in the club list.
+  const hidden = new Set(blocked ?? []);
 
   // People who've filled in a profile first — a card with a photo and a line
   // about themselves is the whole point of the page.
-  const members = (players ?? []).sort((a, b) => score(b) - score(a));
+  const members = (players ?? [])
+    .filter((p) => !hidden.has(p.id))
+    .sort((a, b) => score(b) - score(a));
 
   return (
     <>

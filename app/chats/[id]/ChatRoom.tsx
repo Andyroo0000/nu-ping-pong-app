@@ -227,7 +227,7 @@ function Bubble({
       <div
         className={`max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-sm ${
           mine
-            ? "bg-ink text-white"
+            ? "bg-ink text-bg"
             : "border border-border bg-surface text-text"
         }`}
       >

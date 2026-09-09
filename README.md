@@ -26,8 +26,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      [Security model](#security-model).
    - [`supabase/migrations/0006_push_subscriptions.sql`](supabase/migrations/0006_push_subscriptions.sql) —
      push notification subscriptions and per-player toggles.
+   - [`supabase/migrations/0007_direct_chats_blocks_reports.sql`](supabase/migrations/0007_direct_chats_blocks_reports.sql) —
+     chatting without a challenge, blocking, and reporting.
 
-   0002 through 0006 are additive: safe to run on a database that already has
+   0002 through 0007 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
@@ -303,6 +305,30 @@ Two paths must never be redirected by the proxy: `/sw.js` and
 to `/login` silently kills installability and push with no visible error. They
 are excluded in both [`proxy.ts`](proxy.ts) and the public-path list.
 
+### Blocking and reporting
+
+The app has photos, free-text bios and private chat between people who may not
+know each other, so there has to be a way out that isn't "message the
+organiser".
+
+**Blocking is one-directional to create and mutual in effect.** You can see who
+you've blocked; you can't see who has blocked you, and a blocked player is
+never told. They just stop being able to reach you. It's enforced in the
+database, not only hidden in the UI: `is_blocked_pair()` gates the message
+insert policy, `send_challenge`, `find_match_in_hall`, `pair_with_player` and
+`queue_elsewhere`, so a blocked player can't get through by calling the API
+directly. Error messages are deliberately vague ("You can't challenge that
+player") rather than confirming a block exists.
+
+**Reports** go into a `reports` table that only the reporter can read back.
+Review them in the Supabase dashboard — `select * from reports where status =
+'open'` — which uses the service role and bypasses RLS. There's no admin UI;
+for a club this size a SQL query is the honest answer.
+
+**Chatting without a challenge**: `open_direct_channel()` reuses the existing
+two-person channel if there is one, so saying hello twice doesn't scatter the
+history across two threads.
+
 ### Security model
 
 Every new table has row level security on. Channels, their rosters, and their
@@ -341,9 +367,8 @@ user id. To make them members-only, flip the bucket to private and switch
 - Username is derived from the email prefix (`jdoe@northeastern.edu` → `jdoe`)
   and isn't editable in the UI yet. Display names come from the sign-up form
   and fall back to `@username` when unset.
-- No moderation tooling for profile photos or bios, and no way to report a
-  player. Fine for a club that knows each other; the first thing to add if that
-  stops being true.
+- Reports have no admin UI — you read them with a SQL query, and removing
+  someone's photo means deleting the row and the storage object by hand.
 - Singles only — no doubles, and no tournament brackets.
 - Notifications are push-only. Someone who never installs the app or declines
   the permission prompt still finds out from the nav badge and nothing else.

@@ -377,6 +377,116 @@ export async function sendMessage(formData: FormData): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Direct chats, blocking, reporting
+// ---------------------------------------------------------------------------
+
+/** Chat with someone without challenging them. Reuses an existing thread. */
+export async function startChat(formData: FormData): Promise<ActionResult> {
+  const otherId = String(formData.get("otherId") ?? "");
+  if (!otherId) return { ok: false, error: "Pick someone to message." };
+
+  const supabase = await createClient();
+  const { data: channelId, error } = await supabase.rpc("open_direct_channel", {
+    p_other: otherId,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!channelId) return { ok: false, error: "Couldn't open that chat." };
+
+  revalidatePath("/chats");
+  redirect(`/chats/${channelId}`);
+}
+
+export async function blockPlayer(formData: FormData): Promise<ActionResult> {
+  const otherId = String(formData.get("otherId") ?? "");
+  if (!otherId) return { ok: false, error: "Missing player." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (otherId === user.id) return { ok: false, error: "You can't block yourself." };
+
+  const { error } = await supabase
+    .from("blocks")
+    .upsert({ blocker: user.id, blocked: otherId }, { onConflict: "blocker,blocked" });
+  if (error) return { ok: false, error: error.message };
+
+  // Any pending challenge between them is void now, in either direction.
+  await supabase
+    .from("challenges")
+    .update({ status: "cancelled", responded_at: new Date().toISOString() })
+    .eq("status", "pending")
+    .eq("challenger", user.id)
+    .eq("opponent", otherId);
+
+  revalidateEverywhere();
+  return { ok: true, message: "Blocked. They can't message or challenge you." };
+}
+
+export async function unblockPlayer(formData: FormData): Promise<ActionResult> {
+  const otherId = String(formData.get("otherId") ?? "");
+  if (!otherId) return { ok: false, error: "Missing player." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("blocks")
+    .delete()
+    .eq("blocker", user.id)
+    .eq("blocked", otherId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateEverywhere();
+  return { ok: true, message: "Unblocked." };
+}
+
+export async function reportPlayer(formData: FormData): Promise<ActionResult> {
+  const reported = String(formData.get("otherId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const detail = String(formData.get("detail") ?? "").trim().slice(0, 1000);
+  const channelId = String(formData.get("channelId") ?? "");
+
+  const VALID = ["harassment", "spam", "fake-results", "photo", "other"];
+  if (!reported) return { ok: false, error: "Missing player." };
+  if (!VALID.includes(reason)) return { ok: false, error: "Pick a reason." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (reported === user.id) return { ok: false, error: "You can't report yourself." };
+
+  const { error } = await supabase.from("reports").insert({
+    reporter: user.id,
+    reported,
+    reason,
+    detail: detail || null,
+    channel_id: channelId || null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  return {
+    ok: true,
+    message: "Reported. The club organiser will see this. Block them too if you'd rather not hear from them.",
+  };
+}
+
+/** A block changes who shows up almost everywhere, so refresh the lot. */
+function revalidateEverywhere() {
+  revalidatePath("/home");
+  revalidatePath("/members");
+  revalidatePath("/matchmaking");
+  revalidatePath("/chats");
+  revalidatePath("/profile/[username]", "page");
+}
+
+// ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
 

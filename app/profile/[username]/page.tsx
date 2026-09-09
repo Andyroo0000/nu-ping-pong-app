@@ -10,7 +10,8 @@ import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
-import { displayName } from "@/lib/names";
+import { displayName, firstName } from "@/lib/names";
+import { PlayerActions } from "@/components/PlayerActions";
 import { availabilityLabels, playPreferenceLabel, yearLabel } from "@/lib/profile";
 import { confirmMatch, declineMatch } from "@/app/actions";
 
@@ -58,6 +59,7 @@ async function ProfileBody({ params }: { params: Params }) {
     { data: matches },
     { data: pending },
     { data: casual },
+    { data: blockRow },
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -86,6 +88,14 @@ async function ProfileBody({ params }: { params: Params }) {
         .eq("status", "pending")
         .order("played_at", { ascending: false }),
       supabase.rpc("casual_record", { p_player: profile.id }),
+      isOwnProfile
+        ? Promise.resolve({ data: null })
+        : supabase
+            .from("blocks")
+            .select("blocked")
+            .eq("blocker", user?.id ?? "")
+            .eq("blocked", profile.id)
+            .maybeSingle(),
     ]);
 
   const casualRecord = casual?.[0] ?? { wins: 0, losses: 0 };
@@ -160,6 +170,14 @@ async function ProfileBody({ params }: { params: Params }) {
           )}
         </div>
 
+        {user && !isOwnProfile && (
+          <PlayerActions
+            playerId={profile.id}
+            firstName={firstName(profile)}
+            isBlocked={Boolean(blockRow)}
+          />
+        )}
+
         <div className="mt-7 grid grid-cols-3 gap-2.5">
           <Stat value={`${winRate}%`} label="Win rate" />
           <Stat value={String(Math.abs(streak))} label={streak >= 0 ? "Win streak" : "Loss streak"} />
@@ -228,7 +246,7 @@ async function ProfileBody({ params }: { params: Params }) {
               <div key={m.id} className="flex items-center gap-3 border-b border-border py-3 last:border-0">
                 <div
                   className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold ${
-                    won ? "bg-ink text-white" : "border-[1.5px] border-text-faint text-text-faint"
+                    won ? "bg-ink text-bg" : "border-[1.5px] border-text-faint text-text-faint"
                   }`}
                 >
                   {won ? "W" : "L"}

@@ -80,12 +80,26 @@ async function ChatHeader({ params }: { params: Params }) {
         )}
       </div>
       {other && (
-        <Link
-          href={`/log-match?opponent=${other.id}`}
-          className="whitespace-nowrap rounded-[9px] border border-ink-bright bg-ink-dim px-3 py-2 text-xs font-bold"
-        >
-          Log score
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Link
+            href={`/log-match?opponent=${other.id}`}
+            className="whitespace-nowrap rounded-[9px] border border-ink-bright bg-ink-dim px-3 py-2 text-xs font-bold"
+          >
+            Log score
+          </Link>
+          <Link
+            href={`/profile/${other.username}`}
+            aria-label={`${displayName(other)}'s profile, where you can block or report them`}
+            title="Profile, block or report"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-text-faint hover:bg-surface-2"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <circle cx="12" cy="5" r="1.6" />
+              <circle cx="12" cy="12" r="1.6" />
+              <circle cx="12" cy="19" r="1.6" />
+            </svg>
+          </Link>
+        </div>
       )}
     </header>
   );
