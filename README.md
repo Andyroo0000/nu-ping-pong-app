@@ -197,8 +197,8 @@ same paths with literal colours, since an icon file can't resolve CSS
 variables.
 
 **The landing hero** ([`components/HeroScene.tsx`](components/HeroScene.tsx)) is
-the one screen allowed to be atmospheric: a table receding into the dark, the
-husky watching from the back wall, a net in perspective and a ball in play. All
+the one screen allowed to be atmospheric: a table receding into the dark, a
+paddle mid-swing on the back wall, a net in perspective and a ball in play. All
 CSS and inline SVG — no images, no canvas, no animation library — so it still
 ships inside the static shell. It's always dark regardless of theme, because a
 light version looked like an empty page with a table drawn on it.
@@ -215,15 +215,25 @@ Cards use the `.panel` class rather than a flat `bg-surface` box: a whisper of
 gradient and a real shadow. A hairline border on flat white is most of what
 made these screens look unfinished.
 
-[`HuskyWatermark`](components/HuskyWatermark.tsx) puts the husky faintly behind
-page content. **It needs `isolate` on the page container** — a `z-index: -1`
-child paints *behind* its parent's own background unless that parent is a
-stacking context, so without it the watermark is invisible.
+[`BackdropArt`](components/BackdropArt.tsx) puts a paddle faintly behind page
+content. **It needs `isolate` on the page container** — a `z-index: -1` child
+paints *behind* its parent's own background unless that parent is a stacking
+context, so without it the backdrop is invisible.
 
-`HuskySilhouette` takes `features={false}`, and every cropped use passes it.
-A partial head with two cropped eye cut-outs in the corner of a banner reads
-as random dark blobs; the bare skull-and-ears outline survives any crop. Only
-the hero, which shows the whole head, keeps the face.
+**Background art is a paddle, not a husky, and that's deliberate.** Several
+attempts at a husky silhouette read as a cat, then a shield badge, then a pair
+of horns — at the opacities background art runs at (3–9%) an animal head is
+ambiguous, while a paddle reads from its outline alone. It's also the right
+motif for a ping pong club, and it avoids Northeastern's athletics husky, which
+recognised student organisations are explicitly **not** permitted to use (see
+[CSI's marketing policy](https://csi.studentlife.northeastern.edu/marketing-publications-policies/)).
+If the club is ever recognised as a *club sport*, Athletics Marketing can create
+an official lockup — that's the only legitimate route to the real mark.
+
+Two traps in [`PaddleArt`](components/PaddleArt.tsx), both learned the hard
+way: a ring inside the face turns the whole thing into a magnifying glass, and
+the handle has to be long and narrow or it reads as a frying pan. The handle's
+proportions are what say "paddle".
 
 **Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
 each of the six tiers its own accent, a paddle in that colour, and one pip per

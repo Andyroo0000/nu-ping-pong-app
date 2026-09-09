@@ -1,4 +1,4 @@
-import { HuskySilhouette } from "@/components/HuskySilhouette";
+import { PaddleArt } from "@/components/PaddleArt";
 
 /**
  * Dark banner at the top of an in-app page: title, a line of context, and
@@ -26,9 +26,10 @@ export function PageHeader({
 }) {
   return (
     <div className="page-header relative isolate overflow-hidden">
-      {/* Featureless and cropped: see HuskySilhouette on why. */}
-      <HuskySilhouette className="pointer-events-none absolute -right-12 -top-20 h-[230px] w-[230px] text-white/[0.07] sm:-right-6 sm:-top-24 sm:h-[290px] sm:w-[290px]"
-        features={false}
+      {/* Paddle, cropped into the corner. */}
+      <PaddleArt
+        trajectory={false}
+        className="pointer-events-none absolute -right-10 -top-16 h-[210px] w-[210px] text-white/[0.09] sm:-right-4 sm:-top-20 sm:h-[260px] sm:w-[260px]"
       />
 
       {/* Table edge running along the bottom, in perspective. */}

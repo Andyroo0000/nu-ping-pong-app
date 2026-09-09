@@ -1,4 +1,4 @@
-import { HuskySilhouette } from "@/components/HuskySilhouette";
+import { PaddleArt } from "@/components/PaddleArt";
 
 /**
  * The landing hero: a table receding into the dark, a husky watching over it,
@@ -15,8 +15,10 @@ import { HuskySilhouette } from "@/components/HuskySilhouette";
 export function HeroScene({ children }: { children: React.ReactNode }) {
   return (
     <div className="hero-scene relative isolate overflow-hidden">
-      {/* Husky, watching from the back wall. */}
-      <HuskySilhouette className="pointer-events-none absolute -top-4 right-[-14%] h-[380px] w-[380px] text-white/[0.05] sm:right-[-2%] sm:top-2 sm:h-[480px] sm:w-[480px]" />
+      {/* Paddle mid-swing on the back wall. A paddle reads from its outline
+          alone, so this can sit at a higher opacity than the husky it replaced
+          and actually be part of the composition. */}
+      <PaddleArt className="pointer-events-none absolute -top-6 right-[-16%] h-[400px] w-[400px] text-white/[0.07] sm:right-[-3%] sm:top-0 sm:h-[520px] sm:w-[520px]" />
 
       {/* The table, in perspective, meeting the horizon. */}
       <svg

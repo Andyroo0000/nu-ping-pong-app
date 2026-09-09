@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
-import { HuskyWatermark } from "@/components/HuskyWatermark";
+import { BackdropArt } from "@/components/BackdropArt";
 import { BottomTabs } from "@/components/BottomTabs";
 import { TierProgress, TierBadge } from "@/components/TierBadge";
 import { Avatar } from "@/components/Avatar";
@@ -23,7 +23,7 @@ import { playStyleLabel } from "@/lib/halls";
 export default function HomePage() {
   return (
     <div className="pb-tabs relative isolate min-h-screen bg-bg">
-      <HuskyWatermark />
+      <BackdropArt />
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
