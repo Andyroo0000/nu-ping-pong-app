@@ -178,7 +178,7 @@ export default function LandingPage() {
           Join the Club
         </Link>
         <div className="mx-auto mt-16 max-w-2xl border-t border-border pt-7 text-xs text-text-faint">
-          © {new Date().getFullYear()} NU Ping Pong Club — an independent student organization,
+          © NU Ping Pong Club — an independent student organization,
           not affiliated with Northeastern Athletics.
         </div>
       </div>

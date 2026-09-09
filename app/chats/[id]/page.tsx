@@ -1,103 +1,152 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
+import { ChatSkeleton } from "@/components/Skeletons";
 import { ChatRoom } from "./ChatRoom";
 import { displayName } from "@/lib/names";
 
-export const dynamic = "force-dynamic";
+type Params = Promise<{ id: string }>;
 
-export default async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
+// `params` is runtime data, so it's awaited inside the Suspense boundaries
+// rather than here — awaiting it up front would stop the frame from being
+// prerendered and put the whole page back behind the database.
+export default function ChatPage({ params }: { params: Params }) {
+  return (
+    <div className="mx-auto flex h-screen max-w-md flex-col bg-bg">
+      <Suspense fallback={<HeaderSkeleton />}>
+        <ChatHeader params={params} />
+      </Suspense>
+      <Suspense fallback={<ChatSkeleton />}>
+        <ChatBody params={params} />
+      </Suspense>
+    </div>
+  );
+}
 
+async function loadChannel(channelId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const supabase = await createClient();
+
   // RLS only exposes channels the signed-in player belongs to, so a miss here
   // covers both "doesn't exist" and "not yours".
-  const { data: channel } = await supabase
-    .from("channels")
-    .select("id, title, kind")
-    .eq("id", id)
-    .maybeSingle();
-  if (!channel) notFound();
-
-  const [{ data: members }, { data: messages }] = await Promise.all([
+  const [{ data: channel }, { data: members }] = await Promise.all([
+    supabase.from("channels").select("id, title, kind").eq("id", channelId).maybeSingle(),
     supabase
       .from("channel_members")
       .select("user_id, profiles(id, username, full_name, rating)")
-      .eq("channel_id", id),
-    supabase
-      .from("messages")
-      .select("id, author_id, body, kind, created_at")
-      .eq("channel_id", id)
-      .order("created_at", { ascending: true })
-      .limit(200),
+      .eq("channel_id", channelId),
   ]);
-
-  await supabase.rpc("mark_channel_read", { p_channel_id: id });
+  if (!channel) notFound();
 
   const roster = (members ?? [])
     .map((m) => m.profiles)
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
-  const other = roster.find((p) => p.id !== user.id) ?? null;
+
+  return {
+    user,
+    supabase,
+    channel,
+    roster,
+    other: roster.find((p) => p.id !== user.id) ?? null,
+  };
+}
+
+async function ChatHeader({ params }: { params: Params }) {
+  const { id } = await params;
+  const { channel, other } = await loadChannel(id);
 
   return (
-    <div className="mx-auto flex h-screen max-w-md flex-col bg-bg">
-      <header className="flex items-center gap-3 border-b border-border bg-bg-alt px-4 py-3">
-        <Link
-          href="/chats"
-          aria-label="Back to chats"
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-2"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--text)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-        </Link>
-        <Avatar player={other ?? { username: channel.title ?? "?", full_name: null }} size={36} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold">
-            {other ? displayName(other) : (channel.title ?? "Conversation")}
-          </div>
-          {other && (
-            <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-text-faint">
-              {other.rating.toLocaleString()}
-              <TierBadge rating={other.rating} />
-            </div>
-          )}
+    <header className="flex items-center gap-3 border-b border-border bg-bg-alt px-4 py-3">
+      <BackLink />
+      <Avatar player={other ?? { username: channel.title ?? "?", full_name: null }} size={36} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-bold">
+          {other ? displayName(other) : (channel.title ?? "Conversation")}
         </div>
         {other && (
-          <Link
-            href={`/log-match?opponent=${other.id}`}
-            className="whitespace-nowrap rounded-[9px] border border-ink-bright bg-ink-dim px-3 py-2 text-xs font-bold"
-          >
-            Log score
-          </Link>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-text-faint">
+            {other.rating.toLocaleString()}
+            <TierBadge rating={other.rating} />
+          </div>
         )}
-      </header>
+      </div>
+      {other && (
+        <Link
+          href={`/log-match?opponent=${other.id}`}
+          className="whitespace-nowrap rounded-[9px] border border-ink-bright bg-ink-dim px-3 py-2 text-xs font-bold"
+        >
+          Log score
+        </Link>
+      )}
+    </header>
+  );
+}
 
-      <ChatRoom
-        channelId={id}
-        myId={user.id}
-        initialMessages={messages ?? []}
-        roster={roster.map((p) => ({
-          id: p.id,
-          username: p.username,
-          full_name: p.full_name,
-        }))}
-      />
-    </div>
+async function ChatBody({ params }: { params: Params }) {
+  const { id: channelId } = await params;
+  const { user, supabase, roster } = await loadChannel(channelId);
+
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("id, author_id, body, kind, created_at")
+    .eq("channel_id", channelId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  await supabase.rpc("mark_channel_read", { p_channel_id: channelId });
+
+  return (
+    <ChatRoom
+      channelId={channelId}
+      myId={user.id}
+      initialMessages={messages ?? []}
+      roster={roster.map((p) => ({
+        id: p.id,
+        username: p.username,
+        full_name: p.full_name,
+      }))}
+    />
+  );
+}
+
+function HeaderSkeleton() {
+  return (
+    <header className="flex items-center gap-3 border-b border-border bg-bg-alt px-4 py-3">
+      <BackLink />
+      <div className="h-9 w-9 animate-pulse rounded-full bg-surface-2" />
+      <div className="flex-1">
+        <div className="h-3.5 w-32 animate-pulse rounded bg-surface-2" />
+        <div className="mt-2 h-3 w-20 animate-pulse rounded bg-surface-2" />
+      </div>
+    </header>
+  );
+}
+
+function BackLink() {
+  return (
+    <Link
+      href="/chats"
+      aria-label="Back to chats"
+      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-2"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--text)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m15 18-6-6 6-6" />
+      </svg>
+    </Link>
   );
 }

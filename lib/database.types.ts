@@ -281,7 +281,28 @@ export interface Database {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      // queue_entries filtered to rows that haven't expired yet.
+      active_queue: {
+        Row: {
+          user_id: string;
+          location: string | null;
+          note: string | null;
+          play_style: PlayStyle;
+          joined_at: string;
+          expires_at: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "queue_entries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+    };
     Functions: {
       confirm_match: { Args: { p_match_id: string }; Returns: undefined };
       decline_match: { Args: { p_match_id: string }; Returns: undefined };
@@ -303,6 +324,24 @@ export interface Database {
       };
       leave_queue: { Args: Record<string, never>; Returns: undefined };
       find_match: { Args: { p_play_style?: PlayStyle | null }; Returns: string | null };
+      find_match_in_hall: {
+        Args: { p_hall: string; p_play_style?: PlayStyle };
+        Returns: string | null;
+      };
+      pair_with_player: { Args: { p_opponent: string }; Returns: string };
+      queue_elsewhere: {
+        Args: { p_hall?: string | null };
+        Returns: {
+          user_id: string;
+          username: string;
+          full_name: string | null;
+          rating: number;
+          location: string | null;
+          note: string | null;
+          play_style: PlayStyle;
+          joined_at: string;
+        }[];
+      };
       nav_summary: {
         Args: Record<string, never>;
         Returns: { username: string; unread: number; pending_challenges: number }[];

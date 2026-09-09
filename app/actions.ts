@@ -195,21 +195,43 @@ export async function leaveQueue(_formData?: FormData): Promise<ActionResult> {
 }
 
 /**
- * Pair with the closest-rated player currently waiting. Redirects straight
- * into the new chat so the two of them start talking immediately.
+ * Get listed in a hall and try to pair with someone already waiting there.
+ * On a match, drops both players straight into the chat. With nobody else in
+ * that hall, the player stays listed and lands back on the matchmaking page,
+ * which then shows who's playing elsewhere.
  */
-export async function findMatchNow(formData?: FormData): Promise<ActionResult> {
+export async function findMatchInHall(formData: FormData): Promise<ActionResult> {
+  const hall = readHall(formData);
+  const playStyle = normalizePlayStyle(formData.get("playStyle"));
+  if (!hall) return { ok: false, error: "Pick which hall you're playing in first." };
+
   const supabase = await createClient();
-  const { data: channelId, error } = await supabase.rpc("find_match", {
-    p_play_style: normalizePlayStyle(formData?.get("playStyle")),
+  const { data: channelId, error } = await supabase.rpc("find_match_in_hall", {
+    p_hall: hall,
+    p_play_style: playStyle,
   });
   if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/matchmaking");
+  revalidatePath("/chats");
+
   if (!channelId) {
-    return {
-      ok: false,
-      error: "Nobody else is in the queue right now. Join it and we'll pair you when someone is.",
-    };
+    const params = new URLSearchParams({ hall, style: playStyle, searched: "1" });
+    redirect(`/matchmaking?${params}`);
   }
+  redirect(`/chats/${channelId}`);
+}
+
+/** "Someone's playing over at Mary Morse" — join them right now. */
+export async function pairWithPlayer(formData: FormData): Promise<ActionResult> {
+  const opponentId = String(formData.get("opponentId") ?? "");
+  if (!opponentId) return { ok: false, error: "Pick someone to join." };
+
+  const supabase = await createClient();
+  const { data: channelId, error } = await supabase.rpc("pair_with_player", {
+    p_opponent: opponentId,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/matchmaking");
   revalidatePath("/chats");

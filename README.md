@@ -18,8 +18,11 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0003_play_style_and_nav_summary.sql`](supabase/migrations/0003_play_style_and_nav_summary.sql) —
      quick/long play styles, and the `nav_summary()` function that collapses
      the nav's three queries into one.
+   - [`supabase/migrations/0004_hall_matchmaking.sql`](supabase/migrations/0004_hall_matchmaking.sql) —
+     hall-scoped matching, joining a player who's waiting elsewhere, and the
+     `active_queue` view.
 
-   0002 and 0003 are additive: safe to run on a database that already has
+   0002 through 0004 are additive: safe to run on a database that already has
    real players and matches in it.
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
@@ -66,20 +69,25 @@ any `@northeastern.edu` email and a password.
 - **Tiers** (`lib/tiers.ts`) — Rookie Husky → Rally Regular → Spin Doctor →
   Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
   derived from rating.
-- **Matchmaking** (`app/matchmaking`) — three ways to find someone:
-  - *Quick play / Long play* (`find_match`) pairs you instantly with the
-    closest-rated player waiting, preferring someone who wants the same kind
-    of session — one match, or sticking around for a few. It's only a
-    preference: being paired with anyone beats being paired with nobody.
-  - *List yourself* (`join_queue`) puts you on the "at the tables now" list
-    with a hall and your play style. Halls come from a dropdown built from
-    [`lib/halls.ts`](lib/halls.ts) — edit that list to add or rename one —
-    with a "Somewhere else…" option for spots that aren't on it. Entries
-    expire after two hours so the list doesn't go stale; the app doesn't ask
-    how long you'll be there, since that's easier to sort out in chat.
-  - *Challenge* (`send_challenge`) invites a specific player. They accept or
-    decline from their own matchmaking page. Mutual challenges auto-accept
-    rather than leaving two mirrored invitations hanging.
+- **Matchmaking** (`app/matchmaking`) — one **Matchmaking** button that asks
+  two questions: which hall you're in, and Quick play (one match) or Long play
+  (sticking around). Then `find_match_in_hall`:
+  - Lists you in that hall first, so two people searching at the same moment
+    can still find each other.
+  - Pairs you with someone already waiting **in that same hall**, preferring
+    the same play style, then the closest rating, then whoever's waited
+    longest. On a match you both land straight in a chat.
+  - If that hall is empty you stay listed — anyone who searches it in the next
+    two hours gets paired with you — and the page shows who's playing in
+    *other* halls with a **Join** button (`pair_with_player`) so you can walk
+    over to them.
+
+  Halls come from [`lib/halls.ts`](lib/halls.ts) — edit that one list to add or
+  rename a hall — with a "Somewhere else…" option that reveals a text box. The
+  app doesn't ask how long you'll be around; that's easier to sort out in chat.
+- **Challenges** (`send_challenge`) invite a specific player instead. They
+  accept or decline from their own matchmaking page, and mutual challenges
+  auto-accept rather than leaving two mirrored invitations hanging.
 - **Chat** (`app/chats`) — accepting a challenge or getting paired opens a
   two-person channel. Live via Supabase Realtime on `public.messages`, with a
   slow poll as a fallback. A new channel opens with a system message and a few
@@ -89,8 +97,28 @@ any `@northeastern.edu` email and a password.
 
 ### Keeping page loads fast
 
-Every Supabase query is a network round trip, and they add up quickly when
-they're serial. Two things keep the count down:
+**Partial Prerendering does most of the work.** `cacheComponents: true` in
+[`next.config.ts`](next.config.ts) means every signed-in route builds to a
+static HTML shell (`◐` in the build output) that's served immediately, with the
+per-player parts streaming in behind `<Suspense>`. Before this, clicking a link
+did nothing visible until auth and every database query had finished — which is
+what made navigation feel slow even when the queries themselves were quick.
+
+Two rules keep it that way:
+
+- **A page function must not `await` anything.** The moment it touches
+  `cookies()`, `params`, `searchParams`, or the database, the whole route stops
+  being prerenderable. Put the data access in a child component inside
+  `<Suspense>` and pass `params` down as the promise rather than awaiting it.
+- **Give each boundary a real placeholder** from
+  [`components/Skeletons.tsx`](components/Skeletons.tsx). The fallback is what
+  ships in the static shell, so it's what people actually see first.
+
+`next build` enforces both — a blocking route fails the build with the file and
+the fix.
+
+Round trips still matter for how fast the streamed content lands. Two things
+keep that count down:
 
 - `getCurrentUser()` in [`lib/auth.ts`](lib/auth.ts) is wrapped in React's
   `cache()`, so a page and the `<Nav />` it renders share one auth lookup

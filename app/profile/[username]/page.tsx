@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -6,14 +7,28 @@ import { Nav } from "@/components/Nav";
 import { TierBadge } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
+import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
 import { displayName, initials } from "@/lib/names";
 import { confirmMatch, declineMatch } from "@/app/actions";
 
-export default async function ProfilePage({
-  params,
-}: {
-  params: Promise<{ username: string }>;
-}) {
+type Params = Promise<{ username: string }>;
+
+// Nav and the page frame are prerendered; the profile itself streams in.
+// `params` is awaited inside the boundary so it doesn't block the shell.
+export default function ProfilePage({ params }: { params: Params }) {
+  return (
+    <div className="min-h-screen bg-bg">
+      <Suspense fallback={<NavSkeleton />}>
+        <Nav />
+      </Suspense>
+      <Suspense fallback={<ProfileSkeleton />}>
+        <ProfileBody params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ProfileBody({ params }: { params: Params }) {
   const { username } = await params;
   const supabase = await createClient();
 
@@ -73,9 +88,7 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <Nav />
-      <div className="mx-auto max-w-md px-6 py-10">
+    <div className="mx-auto max-w-md px-6 py-10">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-ink-bright bg-ink-dim font-display text-2xl font-bold">
             {initials(profile)}
@@ -189,8 +202,7 @@ export default async function ProfilePage({
               Find an Opponent
             </Link>
           </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
