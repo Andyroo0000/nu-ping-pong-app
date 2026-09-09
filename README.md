@@ -117,9 +117,24 @@ any `@northeastern.edu` email and a password.
   `casual_record()` and don't touch rating, win/loss, or your streak.
   Matchmaking prefers to pair like with like, so someone here to rally isn't
   handed to someone chasing a rating.
-- **Ratings** — standard Elo, K = 32, computed server-side in SQL. The number
-  shown while filling out the log-match form (`lib/elo.ts`) is a preview only;
-  the database function is the source of truth.
+- **Ratings** — Elo computed server-side in SQL, base K = 32. Standard Elo
+  already scales by the rating gap: at 1200 you gain +3 for beating an 800 and
+  +29 for beating a 1600, and losses mirror it. On top of that, two multipliers
+  weight *how* you won:
+
+  | | |
+  | --- | --- |
+  | evidence | race to 1 game `0.60` · to 2 (best of 3) `1.00` · to 3+ `1.20` |
+  | margin | won by 1 game `1.00` · by 2 `1.15` · by 3+ `1.30` |
+
+  At equal ratings that runs from +10 for a single game to +25 for a 3-0 in a
+  best-of-five, against a flat +16 before. **Evidence keys off the winner's
+  game count, not the total played** — using the total made a 3-1 outrank a 3-0
+  sweep, which is backwards. The winner's tally names the format.
+
+  Match formats are one game, best of three, or best of five. The number shown
+  while filling out the log-match form (`lib/elo.ts`) is a preview only; the
+  database function is the source of truth, and the two must be kept in step.
 - **Tiers** (`lib/tiers.ts`) — Rookie Husky → Rally Regular → Spin Doctor →
   Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
   derived from rating.
@@ -367,6 +382,17 @@ insert policy, `send_challenge`, `find_match_in_hall`, `pair_with_player` and
 `queue_elsewhere`, so a blocked player can't get through by calling the API
 directly. Error messages are deliberately vague ("You can't challenge that
 player") rather than confirming a block exists.
+
+**Suggestions** (`app/feedback`) go into a `suggestions` table. Sending
+anonymously stores a null author, so nobody — including the sender — can read
+it back through the API; that's the point, since in a club this small an
+attributed complaint is not really anonymous. Read them with:
+
+```sql
+select created_at, kind, body,
+       coalesce((select username from profiles where id = author), '(anonymous)') as from_user
+from suggestions where status = 'open' order by created_at desc;
+```
 
 **Reports** go into a `reports` table that only the reporter can read back.
 Review them in the Supabase dashboard — `select * from reports where status =

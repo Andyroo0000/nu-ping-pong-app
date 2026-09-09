@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { winnerRatingDelta } from "@/lib/elo";
+import { weightLabel, winnerRatingDelta } from "@/lib/elo";
 import { displayName, firstName, initials } from "@/lib/names";
 import { reportMatch } from "@/app/actions";
 
@@ -28,7 +28,7 @@ export function LogMatchForm() {
   const [opponent, setOpponent] = useState<OpponentOption | null>(null);
 
   const [matchKind, setMatchKind] = useState<"ranked" | "casual">("ranked");
-  const [format, setFormat] = useState<3 | 5>(3);
+  const [format, setFormat] = useState<1 | 3 | 5>(3);
   const [games, setGames] = useState<{ a: string; b: string }[]>([
     { a: "", b: "" },
     { a: "", b: "" },
@@ -69,7 +69,7 @@ export function LogMatchForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  function selectFormat(n: 3 | 5) {
+  function selectFormat(n: 1 | 3 | 5) {
     setFormat(n);
     setGames((prev) => Array.from({ length: n }, (_, i) => prev[i] ?? { a: "", b: "" }));
   }
@@ -114,11 +114,15 @@ export function LogMatchForm() {
   let delta = 0;
   if (isRanked && hasResult && myRating != null && opponent) {
     delta = iWon
-      ? winnerRatingDelta(myRating, opponent.rating)
-      : -winnerRatingDelta(opponent.rating, myRating);
+      ? winnerRatingDelta(myRating, opponent.rating, gamesWonMe, gamesWonOpp)
+      : -winnerRatingDelta(opponent.rating, myRating, gamesWonOpp, gamesWonMe);
     myNewRating = myRating + delta;
     oppNewRating = opponent.rating - delta;
   }
+
+  const weightNote = hasResult
+    ? weightLabel(Math.max(gamesWonMe, gamesWonOpp), Math.min(gamesWonMe, gamesWonOpp))
+    : null;
 
   function updateGame(i: number, side: "a" | "b", value: string) {
     setGames((prev) => prev.map((g, idx) => (idx === i ? { ...g, [side]: value } : g)));
@@ -251,16 +255,16 @@ export function LogMatchForm() {
         <div>
           <Label>Format</Label>
           <div className="mt-2 flex gap-1.5 rounded-[11px] bg-surface p-1">
-            {[3, 5].map((n) => (
+            {[1, 3, 5].map((n) => (
               <button
                 type="button"
                 key={n}
-                onClick={() => selectFormat(n as 3 | 5)}
+                onClick={() => selectFormat(n as 1 | 3 | 5)}
                 className={`flex-1 rounded-[9px] py-2.5 text-[13px] font-bold ${
                   format === n ? "bg-surface-2 text-text" : "text-text-faint"
                 }`}
               >
-                Best of {n}
+                {n === 1 ? "One game" : `Best of ${n}`}
               </button>
             ))}
           </div>
@@ -303,6 +307,9 @@ export function LogMatchForm() {
         {isRanked && hasResult && opponent && myRating != null && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-3 text-xs font-bold text-text-faint">IF CONFIRMED</div>
+            {weightNote && (
+              <p className="mb-3 text-[13px] leading-relaxed text-text-dim">{weightNote}</p>
+            )}
             <PreviewRow label="You" from={myRating} to={myNewRating!} />
             <PreviewRow
               label={firstName(opponent)}

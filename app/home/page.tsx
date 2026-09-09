@@ -72,6 +72,13 @@ export default function HomePage() {
             Browse the club
           </Link>
         </div>
+
+        <Link
+          href="/feedback"
+          className="mt-2.5 block rounded-xl border border-border py-3 text-center text-[13px] font-bold text-text-dim"
+        >
+          Suggest something
+        </Link>
       </div>
 
       <Suspense fallback={null}>

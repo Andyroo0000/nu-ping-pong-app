@@ -303,6 +303,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
         Relationships: [];
       };
+      suggestions: {
+        Row: {
+          id: string;
+          author: string | null;
+          kind: string;
+          body: string;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          author?: string | null;
+          kind?: string;
+          body: string;
+          status?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["suggestions"]["Insert"]>;
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           endpoint: string;

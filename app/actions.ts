@@ -486,6 +486,42 @@ function revalidateEverywhere() {
   revalidatePath("/profile/[username]", "page");
 }
 
+/**
+ * Send the organiser a suggestion or a bug report.
+ *
+ * Anonymous is a real option: the point is to hear what people actually think,
+ * and someone worried about being identified in a small club just won't send
+ * anything. Anonymous rows have a null author, so nobody — including the
+ * sender — can read them back through the API.
+ */
+export async function sendSuggestion(formData: FormData): Promise<ActionResult> {
+  const body = String(formData.get("body") ?? "").trim().slice(0, 2000);
+  const kindRaw = String(formData.get("kind") ?? "idea");
+  const anonymous = String(formData.get("anonymous") ?? "") === "on";
+
+  if (!body) return { ok: false, error: "Write something first." };
+
+  const kind = ["idea", "bug", "other"].includes(kindRaw) ? kindRaw : "idea";
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("suggestions")
+    .insert({ author: anonymous ? null : user.id, kind, body });
+  if (error) return { ok: false, error: error.message };
+
+  return {
+    ok: true,
+    message: anonymous
+      ? "Sent anonymously. Thanks — it goes straight to the organiser."
+      : "Sent. Thanks — it goes straight to the organiser.",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
