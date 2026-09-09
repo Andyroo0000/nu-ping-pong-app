@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { BottomTabs } from "@/components/BottomTabs";
 import { TierProgress } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
@@ -19,14 +20,17 @@ type Params = Promise<{ username: string }>;
 // `params` is awaited inside the boundary so it doesn't block the shell.
 export default function ProfilePage({ params }: { params: Params }) {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="pb-tabs min-h-screen bg-bg">
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
       <Suspense fallback={<ProfileSkeleton />}>
         <ProfileBody params={params} />
       </Suspense>
-    </div>
+
+      <Suspense fallback={null}>
+        <BottomTabs />
+      </Suspense>    </div>
   );
 }
 

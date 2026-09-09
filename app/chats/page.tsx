@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { BottomTabs } from "@/components/BottomTabs";
 import { Avatar } from "@/components/Avatar";
 import { NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
 import { NetRule } from "@/components/NetRule";
@@ -19,7 +20,7 @@ type Member = {
 
 export default function ChatsPage() {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="pb-tabs min-h-screen bg-bg">
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
@@ -35,6 +36,10 @@ export default function ChatsPage() {
           </Suspense>
         </div>
       </div>
+
+      <Suspense fallback={null}>
+        <BottomTabs />
+      </Suspense>
     </div>
   );
 }
@@ -133,7 +138,7 @@ async function ChannelList() {
               </div>
             </div>
             {count > 0 && (
-              <div className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-nu transition-colors hover:bg-nu-deep px-1.5 text-[11px] font-bold text-white">
+              <div className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-nu px-1.5 text-[11px] font-bold text-white">
                 {count > 99 ? "99+" : count}
               </div>
             )}

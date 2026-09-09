@@ -153,7 +153,7 @@ export function LogMatchForm() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-bg px-6 pb-10">
+    <div className="pb-page mx-auto min-h-screen max-w-md bg-bg px-6">
       <div className="flex items-center gap-3 py-5">
         <button
           type="button"

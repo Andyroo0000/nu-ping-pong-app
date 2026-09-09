@@ -178,7 +178,7 @@ export function ChatRoom({
           e.preventDefault();
           send(draft);
         }}
-        className="border-t border-border bg-bg-alt px-4 py-3"
+        className="pb-safe-plus border-t border-border bg-bg-alt px-4 pt-3"
       >
         {error && <p className="mb-2 text-[13px] font-semibold text-text-dim">{error}</p>}
         <div className="flex items-end gap-2">

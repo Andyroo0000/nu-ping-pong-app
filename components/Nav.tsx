@@ -1,31 +1,13 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getNavSummary } from "@/lib/nav-summary";
 import { Wordmark } from "@/components/HuskyMark";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OnlineCount } from "@/components/OnlineDot";
 
 export async function Nav() {
-  // getCurrentUser is request-cached, so this reuses the lookup the page
-  // already did rather than paying for a second one.
-  const user = await getCurrentUser();
-
-  let username: string | null = null;
-  let unread = 0;
-  let openChallenges = 0;
-
-  if (user) {
-    // One round trip for the username, the unread total, and the pending
-    // challenge count. This renders on every signed-in page, so what used to
-    // be three separate queries was three round trips per navigation.
-    const supabase = await createClient();
-    const { data } = await supabase.rpc("nav_summary");
-    const summary = data?.[0];
-    username = summary?.username ?? null;
-    unread = summary?.unread ?? 0;
-    openChallenges = summary?.pending_challenges ?? 0;
-  }
+  // One round trip, shared with <BottomTabs /> via cache().
+  const { username, unread, pendingChallenges: openChallenges } = await getNavSummary();
 
   return (
     <div className="flex items-center justify-between border-b-2 border-nu bg-bg-alt px-6 py-4">
@@ -43,16 +25,12 @@ export async function Nav() {
         <OnlineCount />
       </div>
       <div className="flex items-center gap-4">
-        {/* On narrow screens the section links collapse; chats still needs to
-            be reachable, since that's where a new match shows up. */}
-        <Link href="/chats" className="relative text-sm font-semibold text-text-dim sm:hidden">
-          Chats
-          {unread > 0 && <Dot />}
-        </Link>
+        {/* Below `sm` these are all handled by <BottomTabs />, so the top bar
+            keeps just the two controls that have nowhere else to live. */}
         {username && (
           <Link
             href={`/profile/${username}`}
-            className="text-sm font-semibold text-text-dim hover:text-text"
+            className="hidden text-sm font-semibold text-text-dim hover:text-text sm:inline"
           >
             My Profile
           </Link>
@@ -85,11 +63,5 @@ function NavLink({
         </span>
       )}
     </Link>
-  );
-}
-
-function Dot() {
-  return (
-    <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-nu" aria-hidden />
   );
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { BottomTabs } from "@/components/BottomTabs";
 import { TierBadge } from "@/components/TierBadge";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
@@ -38,7 +39,7 @@ type PlayerRef = {
 // the moment you click through. Each section streams in on its own.
 export default function MatchmakingPage({ searchParams }: { searchParams: Params }) {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="pb-tabs min-h-screen bg-bg">
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
@@ -80,6 +81,10 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
           Browse Full Leaderboard
         </Link>
       </div>
+
+      <Suspense fallback={null}>
+        <BottomTabs />
+      </Suspense>
     </div>
   );
 }

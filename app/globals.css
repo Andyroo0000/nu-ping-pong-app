@@ -130,7 +130,7 @@ body {
   color: var(--text);
 }
 
-/* The white line down the middle of a table. Used to divide page sections. */
+/* The white line down the middle of a table. Used as a section divider. */
 .net-rule {
   height: 3px;
   background-image: repeating-linear-gradient(

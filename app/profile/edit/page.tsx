@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
+import { BottomTabs } from "@/components/BottomTabs";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
 import { ProfileForm } from "./ProfileForm";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -11,14 +12,17 @@ import { NotificationSettings } from "@/components/NotificationSettings";
 
 export default function EditProfilePage() {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="pb-tabs min-h-screen bg-bg">
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
       </Suspense>
       <Suspense fallback={<ProfileSkeleton />}>
         <EditProfileBody />
       </Suspense>
-    </div>
+
+      <Suspense fallback={null}>
+        <BottomTabs />
+      </Suspense>    </div>
   );
 }
 

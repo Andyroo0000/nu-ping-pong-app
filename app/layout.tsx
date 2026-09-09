@@ -18,6 +18,8 @@ const manrope = Manrope({
 });
 
 export const viewport: Viewport = {
+  // Required before env(safe-area-inset-*) reports anything on iOS.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#c8102e" },
     { media: "(prefers-color-scheme: dark)", color: "#17151c" },

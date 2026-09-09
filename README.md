@@ -195,6 +195,29 @@ app describes itself as an independent student organisation in the footer. If
 the club ever becomes officially affiliated, that's the point to ask the
 university about using the real marks.
 
+### Phones
+
+Most of this gets used standing next to a table, so the phone layout is the
+primary one, not an afterthought.
+
+- **[`components/BottomTabsBar.tsx`](components/BottomTabsBar.tsx)** is the
+  navigation below `sm`. The top nav hides its section links on narrow screens,
+  which had left matchmaking — the whole point of the app — with no route to it
+  at all on a phone. Tabs also sit in the thumb zone and are what make the
+  installed app feel like an app. Each tab is 56px tall, past the 44px minimum
+  tap target.
+- **Safe areas.** Installed to an iPhone home screen the app draws edge to
+  edge, so `viewportFit: "cover"` plus the `pb-safe` / `pb-tabs` / `pb-page`
+  utilities keep the tab bar above the home indicator and the chat composer
+  reachable. Without `viewportFit`, `env(safe-area-inset-*)` reports zero and
+  none of it does anything.
+- **Use `100dvh`, never `100vh`,** for full-height panes. On mobile browsers
+  `100vh` includes the address bar, which pushed the chat message box off the
+  bottom of the screen.
+- The nav and the tab bar share one `nav_summary()` call via
+  [`lib/nav-summary.ts`](lib/nav-summary.ts), wrapped in `cache()` — otherwise
+  both would query on every navigation.
+
 ### Keeping page loads fast
 
 **Partial Prerendering does most of the work.** `cacheComponents: true` in

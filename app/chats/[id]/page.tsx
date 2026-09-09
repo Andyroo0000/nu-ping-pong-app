@@ -17,7 +17,7 @@ type Params = Promise<{ id: string }>;
 // prerendered and put the whole page back behind the database.
 export default function ChatPage({ params }: { params: Params }) {
   return (
-    <div className="mx-auto flex h-screen max-w-md flex-col bg-bg">
+    <div className="mx-auto flex h-[100dvh] max-w-md flex-col bg-bg">
       <Suspense fallback={<HeaderSkeleton />}>
         <ChatHeader params={params} />
       </Suspense>
