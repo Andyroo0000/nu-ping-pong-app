@@ -34,8 +34,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      one chat thread per pair of players, instead of a new one per match.
    - [`supabase/migrations/0010_live_matches.sql`](supabase/migrations/0010_live_matches.sql) —
      live scoreboards the club can watch.
+   - [`supabase/migrations/0011_onboarding.sql`](supabase/migrations/0011_onboarding.sql) —
+     remembers who has seen the walkthrough.
 
-   0002 through 0010 are additive: safe to run on a database that already has
+   0002 through 0011 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -50,7 +52,11 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0007 chat + block + report', to_regclass('public.blocks') is not null
    union all select '0008 margin elo + suggestions', to_regclass('public.suggestions') is not null
    union all select '0009 one chat per pair', to_regproc('public.channel_between') is not null
-   union all select '0010 live scoreboards', to_regclass('public.live_matches') is not null;
+   union all select '0010 live scoreboards', to_regclass('public.live_matches') is not null
+   union all select '0011 onboarding',
+     exists (select 1 from information_schema.columns
+             where table_schema='public' and table_name='profiles'
+               and column_name='onboarded_at');
    ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
@@ -185,6 +191,15 @@ any `@northeastern.edu` email and a password.
   moment later, with nothing to clean up. The trade is that presence is
   in-memory only, so it can't answer "when were they last here" — that would
   need a `last_seen_at` column and a heartbeat.
+- **First-run walkthrough** ([`components/Welcome.tsx`](components/Welcome.tsx))
+  — four cards on first landing, covering only what isn't discoverable by
+  looking at the screen: that a result needs the other player to confirm it,
+  that matchmaking is hall-based, and that casual games exist. Nobody reads a
+  tour, so it stays at four. `profiles.onboarded_at` records that it's been
+  seen — on the profile rather than in localStorage, so someone who signed up
+  on a laptop isn't walked through it again on their phone. Migration 0011
+  backfills existing players so nobody gets ambushed with a tour of features
+  they've been using for weeks.
 - **Live scoreboards** (`app/live/[id]`) — you're at the table with your phone.
   Tap a half of the screen per point; the score broadcasts to your opponent and
   to anyone in the club who wants to follow along, and "Being played now" shows
@@ -455,6 +470,15 @@ new match, because accepting a challenge has to visibly do something.
 `channel_between()` requires the channel to have **exactly two members**, not
 just to contain both players — otherwise a future group channel containing the
 pair would match and their private messages would land in it.
+
+### The password warning
+
+The sign-up form tells people to make up a new password rather than reusing
+their Northeastern login. Worth being precise about why: passwords are hashed
+by Supabase and nobody running the club can read them, so the risk isn't
+storage — it's **reuse**. If someone signs up with their university password
+and this app is ever breached, that's a university account at risk. The copy
+says that plainly instead of implying the app is untrustworthy.
 
 ### Security model
 

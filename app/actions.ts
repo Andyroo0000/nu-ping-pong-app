@@ -522,6 +522,24 @@ export async function sendSuggestion(formData: FormData): Promise<ActionResult> 
   };
 }
 
+/** Mark the walkthrough as seen, so it doesn't come back. */
+export async function completeOnboarding(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ onboarded_at: new Date().toISOString() })
+    .eq("id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/home");
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Live scoreboards
 // ---------------------------------------------------------------------------

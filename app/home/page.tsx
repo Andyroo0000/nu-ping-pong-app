@@ -14,6 +14,7 @@ import { PaddleIcon } from "@/components/PaddleIcon";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { LiveNow } from "@/components/LiveNow";
+import { WelcomeGate } from "@/components/WelcomeGate";
 import { OnlineAvatarWrapper, OnlineCount } from "@/components/OnlineDot";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
@@ -27,6 +28,10 @@ export default function HomePage() {
       <BackdropArt />
       <Suspense fallback={<NavSkeleton />}>
         <Nav />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <WelcomeGate />
       </Suspense>
 
       <Suspense fallback={<div className="page-header h-[132px]" />}>

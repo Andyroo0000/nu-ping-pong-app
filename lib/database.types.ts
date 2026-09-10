@@ -32,6 +32,7 @@ export interface Database {
           notify_challenges: boolean;
           notify_messages: boolean;
           notify_confirmations: boolean;
+          onboarded_at: string | null;
         };
         Insert: {
           id: string;
@@ -50,6 +51,7 @@ export interface Database {
           notify_challenges?: boolean;
           notify_messages?: boolean;
           notify_confirmations?: boolean;
+          onboarded_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];

@@ -113,10 +113,26 @@ function LoginForm() {
             name="password"
             required
             minLength={6}
-            placeholder="Password"
+            placeholder={isSignUp ? "Pick a new password" : "Password"}
             autoComplete={isSignUp ? "new-password" : "current-password"}
             className="rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm outline-none focus:border-ink"
           />
+
+          {/*
+            The real risk with any club-run site is password reuse, not the
+            storage: passwords are hashed by Supabase and nobody here can read
+            them. So the warning is about not reusing one, and says why.
+          */}
+          {isSignUp && (
+            <p className="flex items-start gap-2 rounded-xl border border-nu-line bg-nu-wash px-3 py-2.5 text-[13px] leading-relaxed">
+              <ShieldIcon />
+              <span>
+                <span className="font-bold">Make up a new password for this site.</span>{" "}
+                Don&rsquo;t reuse your Northeastern login or a password from anywhere else — this
+                is a student-run club app, not a university system.
+              </span>
+            </p>
+          )}
 
           {state && !state.ok && (
             <p className="rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-sm font-semibold">
@@ -149,5 +165,25 @@ function LoginForm() {
         </p>
       </div>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--nu-accent)"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="mt-0.5 shrink-0"
+      aria-hidden
+    >
+      <path d="M12 3 5 6v6c0 5 3 8 7 9 4-1 7-4 7-9V6Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
   );
 }
