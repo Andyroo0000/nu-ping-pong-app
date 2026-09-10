@@ -28,10 +28,27 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      push notification subscriptions and per-player toggles.
    - [`supabase/migrations/0007_direct_chats_blocks_reports.sql`](supabase/migrations/0007_direct_chats_blocks_reports.sql) —
      chatting without a challenge, blocking, and reporting.
+   - [`supabase/migrations/0008_margin_elo_and_suggestions.sql`](supabase/migrations/0008_margin_elo_and_suggestions.sql) —
+     rating weighted by how decisive a match was, and the suggestion box.
+   - [`supabase/migrations/0009_one_chat_per_pair.sql`](supabase/migrations/0009_one_chat_per_pair.sql) —
+     one chat thread per pair of players, instead of a new one per match.
 
-   0002 through 0007 are additive: safe to run on a database that already has
+   0002 through 0009 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
+
+   To check what's already applied:
+
+   ```sql
+   select '0005 profiles + photos' as migration,
+          exists (select 1 from information_schema.columns
+                  where table_schema='public' and table_name='profiles'
+                    and column_name='avatar_path') as applied
+   union all select '0006 notifications', to_regclass('public.push_subscriptions') is not null
+   union all select '0007 chat + block + report', to_regclass('public.blocks') is not null
+   union all select '0008 margin elo + suggestions', to_regclass('public.suggestions') is not null
+   union all select '0009 one chat per pair', to_regproc('public.channel_between') is not null;
+   ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
    "check your email" message instead of being signed straight in).
