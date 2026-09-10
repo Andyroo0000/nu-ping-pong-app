@@ -103,3 +103,35 @@ export function gameLabel(state: LiveState): string {
   if (state.finished) return `Match over · ${total}`;
   return `Game ${state.games.length + 1} · ${total}`;
 }
+
+// ---------------------------------------------------------------------------
+// Doubles on the Playing-now lists
+//
+// A doubles match is a live_matches row with partners set, so the same list
+// renders both. These two helpers keep the "who is playing" and "am I in it"
+// questions in one place rather than in every list that shows a live match.
+// ---------------------------------------------------------------------------
+
+type LiveRow = {
+  player_a: string;
+  player_b: string;
+  name_a: string;
+  name_b: string;
+  partner_a: string | null;
+  partner_b: string | null;
+  name_partner_a: string | null;
+  name_partner_b: string | null;
+};
+
+/** Each side as one label: "Andrew" for singles, "Andrew & Bo" for doubles. */
+export function sideLabels(m: LiveRow): { a: string; b: string } {
+  return {
+    a: m.name_partner_a ? `${m.name_a} & ${m.name_partner_a}` : m.name_a,
+    b: m.name_partner_b ? `${m.name_b} & ${m.name_partner_b}` : m.name_b,
+  };
+}
+
+/** Every seat at the table, so a partner's own game still reads as theirs. */
+export function liveSeats(m: LiveRow): string[] {
+  return [m.player_a, m.player_b, m.partner_a, m.partner_b].filter(Boolean) as string[];
+}

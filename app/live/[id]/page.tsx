@@ -31,20 +31,37 @@ async function Board({ params }: { params: Params }) {
     .maybeSingle();
   if (!live) notFound();
 
+  const seats = [live.player_a, live.player_b, live.partner_a, live.partner_b].filter(
+    Boolean
+  ) as string[];
+
   const { data: players } = await supabase
     .from("profiles")
     .select("id, username, full_name, rating, avatar_path")
-    .in("id", [live.player_a, live.player_b]);
+    .in("id", seats);
 
-  const a = players?.find((p) => p.id === live.player_a) ?? null;
-  const b = players?.find((p) => p.id === live.player_b) ?? null;
+  const named = (id: string | null, fallback: string) => {
+    const found = id ? players?.find((p) => p.id === id) : null;
+    return found ? displayName(found) : fallback;
+  };
+  // A side of the table is one name or two — the scoreboard only ever needs
+  // to say who it's crediting a point to.
+  const sideName = (player: string, partner: string | null, fallback: string) =>
+    partner ? `${named(player, fallback)} & ${named(partner, "Partner")}` : named(player, fallback);
 
   return (
     <Scoreboard
       liveId={live.id}
       viewerId={user.id}
-      playerA={{ id: live.player_a, name: a ? displayName(a) : "Player A" }}
-      playerB={{ id: live.player_b, name: b ? displayName(b) : "Player B" }}
+      seatIds={seats}
+      playerA={{
+        id: live.player_a,
+        name: sideName(live.player_a, live.partner_a, "Player A"),
+      }}
+      playerB={{
+        id: live.player_b,
+        name: sideName(live.player_b, live.partner_b, "Player B"),
+      }}
       initial={{
         bestOf: live.best_of,
         isRanked: live.is_ranked,

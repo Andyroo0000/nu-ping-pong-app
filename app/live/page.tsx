@@ -12,7 +12,7 @@ import { Avatar } from "@/components/Avatar";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
 import { LiveScores } from "./LiveScores";
-import { gamesWon } from "@/lib/live";
+import { gamesWon, liveSeats, sideLabels } from "@/lib/live";
 
 export default function LivePage() {
   return (
@@ -71,7 +71,8 @@ async function Matches() {
     <div className="mt-5 flex flex-col gap-2.5">
       {matches.map((m) => {
         const won = gamesWon(m.games ?? []);
-        const mine = m.player_a === user.id || m.player_b === user.id;
+        const mine = liveSeats(m).includes(user.id);
+        const sides = sideLabels(m);
         return (
           <Link
             key={m.id}
@@ -96,9 +97,10 @@ async function Matches() {
 
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold">
-                {m.name_a} <span className="text-text-faint">v</span> {m.name_b}
+                {sides.a} <span className="text-text-faint">v</span> {sides.b}
               </div>
               <div className="mt-0.5 text-xs font-semibold text-text-faint">
+                {m.is_doubles ? "Doubles · " : ""}
                 {won.a}–{won.b} in games
                 {m.best_of > 1 ? ` · best of ${m.best_of}` : " · one game"}
                 {m.is_ranked ? "" : " · casual"}

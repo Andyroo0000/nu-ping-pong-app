@@ -14,10 +14,16 @@ import { LadderSkeleton, NavSkeleton } from "@/components/Skeletons";
 import { displayName } from "@/lib/names";
 import { PLACEMENT_MATCHES } from "@/lib/elo";
 
+// `?mode=doubles` switches which ladder this is. A query parameter rather than
+// a second route because it's the same page, the same layout and the same
+// query with one column swapped — two routes would be two copies to keep in
+// step for no gain.
+type Params = Promise<{ mode?: string }>;
+
 // The page function itself does no data access, so this whole frame is
 // prerendered into a static shell and served the instant you click through.
 // The ladder streams into the <Suspense> slot when the query comes back.
-export default function LeaderboardPage() {
+export default function LeaderboardPage({ searchParams }: { searchParams: Params }) {
   return (
     <div className="pb-tabs relative isolate min-h-screen bg-bg">
       <BackdropArt />
@@ -31,9 +37,11 @@ export default function LeaderboardPage() {
       />
 
       <div className="mx-auto max-w-2xl px-6 pb-10">
-        <PeopleTabs />
+        <Suspense fallback={<div className="mt-4 h-[46px] rounded-[11px] bg-surface" />}>
+          <PeopleTabs />
+        </Suspense>
         <Suspense fallback={<LadderSkeleton />}>
-          <Ladder />
+          <Ladder searchParams={searchParams} />
         </Suspense>
       </div>
 
@@ -44,24 +52,35 @@ export default function LeaderboardPage() {
   );
 }
 
-async function Ladder() {
+async function Ladder({ searchParams }: { searchParams: Params }) {
+  const { mode } = await searchParams;
+  const doubles = mode === "doubles";
   const supabase = await createClient();
   const [user, { data: players }] = await Promise.all([
     getCurrentUser(),
     supabase
       .from("profiles")
-      .select("id, username, full_name, rating, wins, losses, avatar_path")
-      .order("rating", { ascending: false }),
+      .select(
+        "id, username, full_name, rating, wins, losses, doubles_rating, doubles_wins, doubles_losses, avatar_path"
+      )
+      .order(doubles ? "doubles_rating" : "rating", { ascending: false }),
   ]);
 
-  const ranked = players ?? [];
+  // One shape for both ladders, so everything below reads the same either way.
+  const ranked = (players ?? []).map((p) => ({
+    ...p,
+    shownRating: doubles ? p.doubles_rating : p.rating,
+    shownWins: doubles ? p.doubles_wins : p.wins,
+    shownLosses: doubles ? p.doubles_losses : p.losses,
+  }));
   const myIndex = ranked.findIndex((p) => p.id === user?.id);
   const me = myIndex >= 0 ? ranked[myIndex] : null;
 
   return (
     <>
       <p className="mt-1 text-sm font-semibold text-text-faint">
-        {ranked.length} ranked player{ranked.length === 1 ? "" : "s"}
+        {ranked.length} player{ranked.length === 1 ? "" : "s"}
+        {doubles ? " on the doubles ladder" : " ranked"}
       </p>
 
       <div className="mt-8 flex flex-col">
@@ -86,8 +105,8 @@ async function Ladder() {
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold">{displayName(p)}</div>
               <span className="mt-1 flex items-center gap-1.5">
-                <TierBadge rating={p.rating} size="sm" short />
-                {p.wins + p.losses < PLACEMENT_MATCHES && (
+                <TierBadge rating={p.shownRating} size="sm" short />
+                {p.shownWins + p.shownLosses < PLACEMENT_MATCHES && (
                   <span
                     className="rounded-full border border-border-strong px-1.5 py-0.5 text-[10px] font-bold text-text-faint"
                     title="Still in placement matches — rating hasn't settled"
@@ -103,10 +122,10 @@ async function Ladder() {
                   p.id === user?.id ? "text-nu-accent" : ""
                 }`}
               >
-                {p.rating.toLocaleString()}
+                {p.shownRating.toLocaleString()}
               </div>
               <div className="text-xs font-semibold text-text-faint">
-                {p.wins}W–{p.losses}L
+                {p.shownWins}W–{p.shownLosses}L
               </div>
             </div>
           </Link>
@@ -116,10 +135,12 @@ async function Ladder() {
       {user && me && (
         <div className="sticky bottom-6 mt-8 flex items-center gap-3 rounded-2xl border-2 border-nu bg-bg p-4 shadow-(--card-shadow)">
           <RankNumber rank={myIndex + 1} />
-          <div className="flex-1 text-sm font-bold">Your rank</div>
-          <TierBadge rating={me.rating} size="sm" short />
+          <div className="flex-1 text-sm font-bold">
+            Your {doubles ? "doubles " : ""}rank
+          </div>
+          <TierBadge rating={me.shownRating} size="sm" short />
           <div className="font-display text-base font-bold text-nu-accent">
-            {me.rating.toLocaleString()}
+            {me.shownRating.toLocaleString()}
           </div>
         </div>
       )}

@@ -19,7 +19,14 @@ import { HowToPlay } from "@/components/HowToPlay";
 import { OnlineAvatarWrapper, OnlineCount } from "@/components/OnlineDot";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
-import { confirmMatch, declineMatch, pairWithPlayer, respondToChallenge } from "@/app/actions";
+import {
+  confirmDoublesMatch,
+  confirmMatch,
+  declineDoublesMatch,
+  declineMatch,
+  pairWithPlayer,
+  respondToChallenge,
+} from "@/app/actions";
 import { displayName, firstName } from "@/lib/names";
 import { playStyleLabel } from "@/lib/halls";
 
@@ -82,6 +89,18 @@ export default function HomePage() {
             className="rounded-xl border border-border-strong py-3.5 text-center text-sm font-bold"
           >
             Browse the club
+          </Link>
+          <Link
+            href="/doubles"
+            className="rounded-xl border border-border-strong py-3.5 text-center text-sm font-bold"
+          >
+            Play doubles
+          </Link>
+          <Link
+            href="/leaderboard?mode=doubles"
+            className="rounded-xl border border-border-strong py-3.5 text-center text-sm font-bold"
+          >
+            Doubles ladder
           </Link>
         </div>
 
@@ -162,7 +181,7 @@ async function Greeting() {
 async function NeedsYou() {
   const { user, supabase } = await me();
 
-  const [{ data: challenges }, { data: pending }] = await Promise.all([
+  const [{ data: challenges }, { data: pending }, { data: doublesPending }] = await Promise.all([
     supabase
       .from("challenges")
       .select("id, note, profiles!challenges_challenger_fkey(username, full_name, rating, avatar_path)")
@@ -177,9 +196,13 @@ async function NeedsYou() {
       .eq("status", "pending")
       .order("played_at", { ascending: false })
       .limit(5),
+    // Doubles results wait on the other team, so they surface the same way —
+    // an unconfirmed match nobody is shown is a match that never counts.
+    supabase.rpc("doubles_pending"),
   ]);
 
-  const total = (challenges?.length ?? 0) + (pending?.length ?? 0);
+  const total =
+    (challenges?.length ?? 0) + (pending?.length ?? 0) + (doublesPending?.length ?? 0);
   if (total === 0) return null;
 
   return (
@@ -241,6 +264,37 @@ async function NeedsYou() {
             </div>
           );
         })}
+
+        {doublesPending?.map((m) => (
+          <div key={m.id} className="panel rounded-2xl p-3.5">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-bold">
+                {m.reporter_name} &amp; {m.partner_name} reported {m.games_won_a}–
+                {m.games_won_b}
+              </div>
+              <div className="mt-0.5 text-xs text-text-dim">
+                Doubles —{" "}
+                {m.is_ranked
+                  ? "confirming moves all four doubles ratings."
+                  : "casual, so no rating change."}
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <form action={confirmDoublesMatch} className="flex-1">
+                <input type="hidden" name="matchId" value={m.id} />
+                <button className="w-full rounded-lg bg-nu py-2.5 text-[13px] font-bold text-white">
+                  Confirm
+                </button>
+              </form>
+              <form action={declineDoublesMatch} className="flex-1">
+                <input type="hidden" name="matchId" value={m.id} />
+                <button className="w-full rounded-lg border border-border-strong py-2.5 text-[13px] font-bold text-text-dim">
+                  Dispute
+                </button>
+              </form>
+            </div>
+          </div>
+        ))}
 
         {pending?.map((m) => (
           <div key={m.id} className="panel rounded-2xl p-3.5">

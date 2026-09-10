@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import { gamesWon } from "@/lib/live";
+import { gamesWon, liveSeats, sideLabels } from "@/lib/live";
 
 /**
  * Matches being played right now, for anyone to follow. Your own game comes
@@ -15,8 +15,9 @@ export async function LiveNow() {
   const { data: live } = await supabase.rpc("live_now");
   if (!live?.length) return null;
 
-  const mine = live.filter((m) => m.player_a === user.id || m.player_b === user.id);
-  const others = live.filter((m) => m.player_a !== user.id && m.player_b !== user.id);
+  // A partner's own doubles match is still theirs, so this checks every seat.
+  const mine = live.filter((m) => liveSeats(m).includes(user.id));
+  const others = live.filter((m) => !liveSeats(m).includes(user.id));
 
   return (
     <div className="mt-7">
@@ -33,7 +34,8 @@ export async function LiveNow() {
       <div className="flex flex-col gap-2.5">
         {[...mine, ...others].map((m) => {
           const won = gamesWon(m.games ?? []);
-          const isMine = m.player_a === user.id || m.player_b === user.id;
+          const isMine = liveSeats(m).includes(user.id);
+          const sides = sideLabels(m);
           return (
             <Link
               key={m.id}
@@ -44,9 +46,10 @@ export async function LiveNow() {
             >
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold">
-                  {m.name_a} <span className="text-text-faint">v</span> {m.name_b}
+                  {sides.a} <span className="text-text-faint">v</span> {sides.b}
                 </div>
                 <div className="mt-0.5 text-xs font-semibold text-text-faint">
+                  {m.is_doubles ? "Doubles · " : ""}
                   {won.a}–{won.b} in games
                   {m.best_of > 1 ? ` · best of ${m.best_of}` : " · one game"}
                   {m.is_ranked ? "" : " · casual"}

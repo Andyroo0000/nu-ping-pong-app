@@ -46,8 +46,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0015_point_margin.sql`](supabase/migrations/0015_point_margin.sql) —
      margin measured in points rather than games, so a 3-0 in 11-2s and a 3-0
      in 11-9s stop paying the same.
+   - [`supabase/migrations/0016_doubles.sql`](supabase/migrations/0016_doubles.sql) —
+     doubles, on its own separate ladder.
 
-   0002 through 0015 are additive: safe to run on a database that already has
+   0002 through 0016 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -67,7 +69,9 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      exists (select 1 from information_schema.columns
              where table_schema='public' and table_name='profiles'
                and column_name='onboarded_at')
-   union all select '0012 placements', to_regproc('public.elo_k') is not null;
+   union all select '0012 placements', to_regproc('public.elo_k') is not null
+   union all select '0015 point margin', to_regproc('public.match_point_share') is not null
+   union all select '0016 doubles', to_regclass('public.doubles_matches') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -257,6 +261,29 @@ any `@northeastern.edu` email and a password.
   ([`components/HowToPlay.tsx`](components/HowToPlay.tsx)) re-opens the same
   four cards on demand — one copy of the rules to keep correct instead of a
   separate rules page, and dismissing it doesn't touch `onboarded_at`.
+- **Doubles** (`app/doubles`, migration 0016) — a **separate ladder**.
+  `profiles.doubles_rating` is its own number with its own placements, and a
+  doubles result never touches a singles rating. Feeding one ladder from both
+  would let a weak player carried by a strong partner collect rating they
+  didn't earn.
+
+  Two architectural choices are worth knowing before changing anything here:
+
+  - Results live in a new `doubles_matches` table, because `matches.winner` is
+    one player. Widening it would make the winner ambiguous and force every
+    aggregate over `profiles.wins/losses` to know about doubles.
+  - Live scoring **reuses `live_matches`**, which gained nullable
+    `partner_a`/`partner_b`. A doubles game is scored exactly like singles —
+    side A against side B, to 11, win by two — so `live_point` and `live_undo`
+    needed no changes at all. One scoreboard, one set of rules, nothing to
+    drift.
+
+  Expected score comes from each team's **average** rating, and each player
+  moves on their own K, so the four deltas differ and all four are stored.
+  That has a known limitation, stated in the migration: carrying a much weaker
+  partner pays less than your singles form suggests, and they gain more. Over
+  a few partners it evens out, which is what a doubles rating measures.
+  Confirmation belongs to the opposing team, and both of them get notified.
 - **Playing now** (`app/live`) — every match being scored right now, with the
   point scores updating live. Only the score on each row is a Client
   Component, so a page full of live matches costs one small subscription per

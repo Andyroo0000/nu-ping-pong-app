@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { Nav } from "@/components/Nav";
 import { BottomTabs } from "@/components/BottomTabs";
-import { TierProgress } from "@/components/TierBadge";
+import { TierBadge, TierProgress } from "@/components/TierBadge";
 import { RatingChart } from "@/components/RatingChart";
 import { Avatar } from "@/components/Avatar";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
@@ -45,7 +45,7 @@ async function ProfileBody({ params }: { params: Params }) {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, username, full_name, rating, wins, losses, created_at, bio, year, home_hall, availability, play_preference, avatar_path"
+      "id, username, full_name, rating, wins, losses, doubles_rating, doubles_wins, doubles_losses, created_at, bio, year, home_hall, availability, play_preference, avatar_path"
     )
     .eq("username", username)
     .single();
@@ -61,6 +61,7 @@ async function ProfileBody({ params }: { params: Params }) {
     { data: pending },
     { data: casual },
     { data: blockRow },
+    { count: doublesRank },
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -70,6 +71,7 @@ async function ProfileBody({ params }: { params: Params }) {
         .from("rating_history")
         .select("rating, created_at")
         .eq("player_id", profile.id)
+        .eq("mode", "singles")
         .order("created_at", { ascending: true }),
       supabase
         .from("matches")
@@ -97,7 +99,13 @@ async function ProfileBody({ params }: { params: Params }) {
             .eq("blocker", user?.id ?? "")
             .eq("blocked", profile.id)
             .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .gt("doubles_rating", profile.doubles_rating),
     ]);
+
+  const doublesTotal = profile.doubles_wins + profile.doubles_losses;
 
   const casualRecord = casual?.[0] ?? { wins: 0, losses: 0 };
   const casualTotal = casualRecord.wins + casualRecord.losses;
@@ -210,6 +218,41 @@ async function ProfileBody({ params }: { params: Params }) {
             affect rating.
           </p>
         )}
+
+        {/* The doubles ladder is a separate number, so it gets its own card
+            rather than being averaged into anything above. */}
+        <div className="panel mt-6 rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-faint">
+                Doubles
+              </div>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="font-display text-2xl font-bold">
+                  {profile.doubles_rating.toLocaleString()}
+                </span>
+                <TierBadge rating={profile.doubles_rating} size="sm" short />
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-bold">
+                {doublesTotal === 0
+                  ? "No doubles yet"
+                  : `${profile.doubles_wins}W–${profile.doubles_losses}L`}
+              </div>
+              {doublesTotal > 0 && (
+                <div className="mt-0.5 text-xs font-semibold text-text-faint">
+                  #{(doublesRank ?? 0) + 1} on the doubles ladder
+                </div>
+              )}
+            </div>
+          </div>
+          {doublesTotal === 0 && (
+            <p className="mt-2 text-xs text-text-faint">
+              Everyone starts at 1,000 here too. Doubles results never move a singles rating.
+            </p>
+          )}
+        </div>
 
         {isOwnProfile && pending && pending.length > 0 && (
           <div className="mt-8">

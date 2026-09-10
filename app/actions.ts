@@ -589,25 +589,190 @@ export async function submitLiveMatch(formData: FormData): Promise<ActionResult>
   } = await supabase.auth.getUser();
   const { data: live } = await supabase
     .from("live_matches")
-    .select("player_a, player_b")
+    .select("player_a, player_b, partner_a, partner_b")
     .eq("id", liveId)
     .maybeSingle();
 
-  const other =
-    live && user ? (live.player_a === user.id ? live.player_b : live.player_a) : null;
-  if (other) {
+  // In doubles the confirm button belongs to the other team, so both of them
+  // need telling — notifying one player would leave the result sitting on
+  // someone who never heard about it.
+  const opposing = (() => {
+    if (!live || !user) return [];
+    const teamA = [live.player_a, live.partner_a].filter(Boolean) as string[];
+    const teamB = [live.player_b, live.partner_b].filter(Boolean) as string[];
+    return teamA.includes(user.id) ? teamB : teamA;
+  })();
+
+  if (opposing.length > 0) {
     const me = await currentPlayerName(supabase);
-    await notify(other, "confirmation", {
-      title: "Confirm a result",
-      body: `${me} submitted your match. Confirm or dispute it.`,
-      url: "/home",
-      tag: "confirmation",
-    });
+    await Promise.all(
+      opposing.map((id) =>
+        notify(id, "confirmation", {
+          title: "Confirm a result",
+          body: `${me} submitted your match. Confirm or dispute it.`,
+          url: "/home",
+          tag: "confirmation",
+        })
+      )
+    );
   }
 
   revalidatePath("/home");
   revalidatePath("/leaderboard");
   return { ok: true, message: "Sent for confirmation." };
+}
+
+// ---------------------------------------------------------------------------
+// Doubles
+//
+// A separate ladder, so these never touch a singles rating. The live
+// scoreboard is shared: a doubles row is just a live_match with partners set,
+// which is why there's no startLiveDoublesScoring/submitLiveDoubles pair here
+// — submitLiveMatch already branches on it.
+// ---------------------------------------------------------------------------
+
+export async function startLiveDoubles(formData: FormData): Promise<ActionResult> {
+  const partnerId = String(formData.get("partnerId") ?? "");
+  const opponent1 = String(formData.get("opponent1") ?? "");
+  const opponent2 = String(formData.get("opponent2") ?? "");
+  const bestOf = Number(formData.get("bestOf") ?? 3);
+  const isRanked = String(formData.get("matchKind") ?? "ranked") !== "casual";
+
+  if (!partnerId || !opponent1 || !opponent2) {
+    return { ok: false, error: "Pick a partner and both opponents." };
+  }
+
+  const supabase = await createClient();
+  const { data: liveId, error } = await supabase.rpc("start_live_doubles", {
+    p_partner: partnerId,
+    p_opponent_1: opponent1,
+    p_opponent_2: opponent2,
+    p_best_of: [1, 3, 5].includes(bestOf) ? bestOf : 3,
+    p_is_ranked: isRanked,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const me = await currentPlayerName(supabase);
+  await Promise.all(
+    [partnerId, opponent1, opponent2].map((id) =>
+      notify(id, "challenge", {
+        title: "Doubles started",
+        body: `${me} started a doubles scoreboard. Follow along or take over scoring.`,
+        url: `/live/${liveId}`,
+        tag: "live",
+      })
+    )
+  );
+
+  revalidatePath("/home");
+  redirect(`/live/${liveId}`);
+}
+
+export async function reportDoublesMatch(formData: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const partnerId = String(formData.get("partnerId") ?? "");
+  const opponent1 = String(formData.get("opponent1") ?? "");
+  const opponent2 = String(formData.get("opponent2") ?? "");
+  const isRanked = String(formData.get("matchKind") ?? "ranked") !== "casual";
+
+  let games: MatchGame[];
+  try {
+    games = JSON.parse(String(formData.get("games") ?? "[]"));
+  } catch {
+    games = [];
+  }
+
+  const four = [user.id, partnerId, opponent1, opponent2];
+  if (four.some((id) => !id)) {
+    return { ok: false, error: "Pick a partner and both opponents." };
+  }
+  if (new Set(four).size !== 4) {
+    return { ok: false, error: "Doubles needs four different players." };
+  }
+  if (!Array.isArray(games) || games.length === 0) {
+    return { ok: false, error: "Enter a final score for at least one game." };
+  }
+  if (games.length > 7) {
+    return { ok: false, error: "That's more games than any supported format." };
+  }
+  if (
+    games.some(
+      (g) =>
+        !Number.isInteger(g?.a) ||
+        !Number.isInteger(g?.b) ||
+        g.a < 0 ||
+        g.b < 0 ||
+        g.a > 99 ||
+        g.b > 99 ||
+        g.a === g.b
+    )
+  ) {
+    return {
+      ok: false,
+      error: "Every game needs two whole scores, and a game can't be a tie.",
+    };
+  }
+
+  const gamesWonA = games.filter((g) => g.a > g.b).length;
+  const gamesWonB = games.filter((g) => g.b > g.a).length;
+  if (gamesWonA === gamesWonB) {
+    return { ok: false, error: "A match can't end in a tie." };
+  }
+
+  // The reporter is always a1 — the table's check constraint requires the
+  // reporter on team A, and the form is built from your side of the table.
+  const { error } = await supabase.from("doubles_matches").insert({
+    a1: user.id,
+    a2: partnerId,
+    b1: opponent1,
+    b2: opponent2,
+    games,
+    games_won_a: gamesWonA,
+    games_won_b: gamesWonB,
+    winner_team: gamesWonA > gamesWonB ? "a" : "b",
+    reported_by: user.id,
+    is_ranked: isRanked,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const me = await currentPlayerName(supabase);
+  await Promise.all(
+    [opponent1, opponent2].map((id) =>
+      notify(id, "confirmation", {
+        title: "Confirm a doubles result",
+        body: `${me} logged a doubles match against you. Confirm or dispute it.`,
+        url: "/home",
+        tag: "confirmation",
+      })
+    )
+  );
+
+  revalidatePath("/home");
+  revalidatePath("/leaderboard");
+  return { ok: true, message: "Sent to the other team to confirm." };
+}
+
+export async function confirmDoublesMatch(formData: FormData) {
+  const matchId = String(formData.get("matchId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("confirm_doubles_match", { p_match_id: matchId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/home");
+  revalidatePath("/leaderboard");
+  revalidatePath("/profile/[username]", "page");
+}
+
+export async function declineDoublesMatch(formData: FormData) {
+  const matchId = String(formData.get("matchId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decline_doubles_match", { p_match_id: matchId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/home");
 }
 
 export async function abandonLiveMatch(formData: FormData): Promise<ActionResult> {

@@ -10,6 +10,8 @@ export type ChannelKind = "match" | "club";
 export type MessageKind = "user" | "system";
 export type PlayStyle = "quick" | "long";
 export type PlayPreference = "casual" | "competitive" | "both";
+export type DoublesTeam = "a" | "b";
+export type RatingMode = "singles" | "doubles";
 
 export interface Database {
   public: {
@@ -22,6 +24,9 @@ export interface Database {
           rating: number;
           wins: number;
           losses: number;
+          doubles_rating: number;
+          doubles_wins: number;
+          doubles_losses: number;
           created_at: string;
           bio: string | null;
           year: string | null;
@@ -41,6 +46,9 @@ export interface Database {
           rating?: number;
           wins?: number;
           losses?: number;
+          doubles_rating?: number;
+          doubles_wins?: number;
+          doubles_losses?: number;
           created_at?: string;
           bio?: string | null;
           year?: string | null;
@@ -128,14 +136,18 @@ export interface Database {
           id: number;
           player_id: string;
           match_id: string | null;
+          doubles_match_id: string | null;
           rating: number;
+          mode: RatingMode;
           created_at: string;
         };
         Insert: {
           id?: number;
           player_id: string;
           match_id?: string | null;
+          doubles_match_id?: string | null;
           rating: number;
+          mode?: RatingMode;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["rating_history"]["Insert"]>;
@@ -314,6 +326,8 @@ export interface Database {
           id: string;
           player_a: string;
           player_b: string;
+          partner_a: string | null;
+          partner_b: string | null;
           scorer: string;
           best_of: number;
           is_ranked: boolean;
@@ -323,6 +337,7 @@ export interface Database {
           points_b: number;
           status: "live" | "finished" | "abandoned";
           match_id: string | null;
+          doubles_match_id: string | null;
           started_at: string;
           updated_at: string;
         };
@@ -330,6 +345,8 @@ export interface Database {
           id?: string;
           player_a: string;
           player_b: string;
+          partner_a?: string | null;
+          partner_b?: string | null;
           scorer: string;
           best_of?: number;
           is_ranked?: boolean;
@@ -339,10 +356,55 @@ export interface Database {
           points_b?: number;
           status?: "live" | "finished" | "abandoned";
           match_id?: string | null;
+          doubles_match_id?: string | null;
           started_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["live_matches"]["Insert"]>;
+        Relationships: [];
+      };
+      doubles_matches: {
+        Row: {
+          id: string;
+          a1: string;
+          a2: string;
+          b1: string;
+          b2: string;
+          games: MatchGame[];
+          games_won_a: number;
+          games_won_b: number;
+          winner_team: DoublesTeam;
+          reported_by: string;
+          status: MatchStatus;
+          is_ranked: boolean;
+          delta_a1: number | null;
+          delta_a2: number | null;
+          delta_b1: number | null;
+          delta_b2: number | null;
+          played_at: string;
+          confirmed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          a1: string;
+          a2: string;
+          b1: string;
+          b2: string;
+          games: MatchGame[];
+          games_won_a: number;
+          games_won_b: number;
+          winner_team: DoublesTeam;
+          reported_by: string;
+          status?: MatchStatus;
+          is_ranked?: boolean;
+          delta_a1?: number | null;
+          delta_a2?: number | null;
+          delta_b1?: number | null;
+          delta_b2?: number | null;
+          played_at?: string;
+          confirmed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["doubles_matches"]["Insert"]>;
         Relationships: [];
       };
       suggestions: {
@@ -492,6 +554,13 @@ export interface Database {
           name_b: string;
           avatar_a: string | null;
           avatar_b: string | null;
+          partner_a: string | null;
+          partner_b: string | null;
+          name_partner_a: string | null;
+          name_partner_b: string | null;
+          avatar_partner_a: string | null;
+          avatar_partner_b: string | null;
+          is_doubles: boolean;
           best_of: number;
           is_ranked: boolean;
           games: MatchGame[];
@@ -499,6 +568,34 @@ export interface Database {
           points_b: number;
           updated_at: string;
         }[];
+      };
+      start_live_doubles: {
+        Args: {
+          p_partner: string;
+          p_opponent_1: string;
+          p_opponent_2: string;
+          p_best_of?: number;
+          p_is_ranked?: boolean;
+        };
+        Returns: string;
+      };
+      confirm_doubles_match: { Args: { p_match_id: string }; Returns: undefined };
+      decline_doubles_match: { Args: { p_match_id: string }; Returns: undefined };
+      doubles_pending: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          games_won_a: number;
+          games_won_b: number;
+          is_ranked: boolean;
+          reporter_name: string;
+          partner_name: string;
+          played_at: string;
+        }[];
+      };
+      match_point_share: {
+        Args: { p_games: MatchGame[]; p_for_a: boolean };
+        Returns: number | null;
       };
       is_blocked_pair: { Args: { p_a: string; p_b: string }; Returns: boolean };
       blocked_ids: { Args: Record<string, never>; Returns: string[] };

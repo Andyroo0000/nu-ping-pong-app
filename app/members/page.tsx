@@ -39,7 +39,9 @@ export default function MembersPage({ searchParams }: { searchParams: Params }) 
       />
 
       <div className="mx-auto max-w-2xl px-6 pb-10">
-        <PeopleTabs />
+        <Suspense fallback={<div className="mt-4 h-[46px] rounded-[11px] bg-surface" />}>
+          <PeopleTabs />
+        </Suspense>
 
         <Suspense fallback={<RowsSkeleton rows={5} />}>
           <Directory searchParams={searchParams} />

@@ -161,3 +161,75 @@ export function ratingNote(args: {
   if (myRating >= 1350) return "Near the top, ratings move slowly by design.";
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Doubles
+//
+// A second ladder, mirroring confirm_doubles_match() in 0016_doubles.sql. The
+// model is the same as singles — expected score, point margin, each player's
+// own K — with one change: expected comes from each TEAM's average rating.
+// ---------------------------------------------------------------------------
+
+/** Team strength, as the doubles Elo sees it. */
+export function teamRating(a: number, b: number): number {
+  return (a + b) / 2;
+}
+
+/**
+ * Rating change for one player in a doubles match.
+ *
+ * Averaging the pair is the standard approach, and it has a limitation worth
+ * knowing: a strong player partnered with a weak one is predicted as their
+ * mean, so carrying someone pays less than that player's singles form would
+ * suggest, and the weaker partner gains more because their K is higher. Over
+ * a few different partners it evens out — a doubles rating measures how you
+ * do in doubles, not how good you are on your own.
+ */
+export function doublesRatingChange(args: {
+  myRating: number;
+  myMatchesPlayed: number;
+  partnerRating: number;
+  opponentRatings: [number, number];
+  games: { a: number; b: number }[];
+  /** Which side of `games` my team is. */
+  side: "a" | "b";
+}): number {
+  const { myRating, myMatchesPlayed, partnerRating, opponentRatings, games, side } = args;
+  const t = tally(games, side);
+  const won = t.gamesFor > t.gamesAgainst;
+  const mine = teamRating(myRating, partnerRating);
+  const theirs = teamRating(opponentRatings[0], opponentRatings[1]);
+  const raw =
+    eloK(myRating, myMatchesPlayed) *
+    evidence(Math.max(t.gamesFor, t.gamesAgainst)) *
+    (actualScore(won, marginShare(t)) - expectedScore(mine, theirs));
+
+  if (won) return Math.max(1, Math.round(raw));
+  const loss = Math.max(1, Math.round(-raw));
+  return -Math.min(loss, Math.max(myRating - FLOOR, 0));
+}
+
+/** Plain-English note for the doubles preview. */
+export function doublesRatingNote(args: {
+  myMatchesPlayed: number;
+  myRating: number;
+  partnerRating: number;
+  opponentRatings: [number, number];
+  games: { a: number; b: number }[];
+  side: "a" | "b";
+}): string | null {
+  const { myMatchesPlayed, myRating, partnerRating, opponentRatings, games, side } = args;
+  const left = PLACEMENT_MATCHES - myMatchesPlayed;
+  if (left > 0) {
+    return `Doubles placement — ${left} to go. Your doubles rating moves a lot until it settles.`;
+  }
+  const t = tally(games, side);
+  const won = t.gamesFor > t.gamesAgainst;
+  const gap = teamRating(opponentRatings[0], opponentRatings[1]) - teamRating(myRating, partnerRating);
+  if (won && gap >= 150) return "You beat the stronger pair — worth more.";
+  if (won && gap <= -150) return "You were the favourites, so there's not much to gain.";
+  if (Math.abs(myRating - partnerRating) >= 250) {
+    return "Uneven pair — expectations sit at your average, so you're judged together.";
+  }
+  return null;
+}

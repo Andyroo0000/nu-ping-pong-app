@@ -13,6 +13,7 @@ export function PlayTabs({ liveCount = 0 }: { liveCount?: number }) {
   const tabs = [
     { href: "/matchmaking", label: "Find a match", badge: 0 },
     { href: "/live", label: "Playing now", badge: liveCount },
+    { href: "/doubles", label: "Doubles", badge: 0 },
   ];
 
   return (
@@ -24,7 +25,7 @@ export function PlayTabs({ liveCount = 0 }: { liveCount?: number }) {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[9px] py-2.5 text-center text-[13px] font-bold ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[9px] py-2.5 text-center text-xs font-bold sm:text-[13px] ${
               active ? "bg-surface-2 text-text" : "text-text-faint"
             }`}
           >

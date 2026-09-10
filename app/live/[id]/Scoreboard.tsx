@@ -36,12 +36,18 @@ export function Scoreboard({
   viewerId,
   playerA,
   playerB,
+  seatIds,
   initial,
 }: {
   liveId: string;
   viewerId: string;
   playerA: Player;
   playerB: Player;
+  /**
+   * Everyone at the table. Singles is just the two players; doubles adds the
+   * partners, who can score and submit like anyone else in the match.
+   */
+  seatIds?: string[];
   initial: Board;
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -52,7 +58,7 @@ export function Scoreboard({
   const pending = useRef(0);
 
   const isScorer = board.scorer === viewerId;
-  const isPlayer = viewerId === playerA.id || viewerId === playerB.id;
+  const isPlayer = (seatIds ?? [playerA.id, playerB.id]).includes(viewerId);
   const won = gamesWon(board.games);
 
   const pull = useCallback(async () => {
