@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PaddleIcon } from "@/components/PaddleIcon";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ProfileNudge } from "@/components/ProfileNudge";
+import { LiveNow } from "@/components/LiveNow";
 import { OnlineAvatarWrapper, OnlineCount } from "@/components/OnlineDot";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
@@ -43,7 +44,12 @@ export default function HomePage() {
           <ProfileNudge />
         </Suspense>
 
-        {/* Anything waiting on this player comes before anything else. */}
+        {/* A game in progress outranks everything — you're at the table. */}
+        <Suspense fallback={null}>
+          <LiveNow />
+        </Suspense>
+
+        {/* Then anything waiting on this player. */}
         <Suspense fallback={null}>
           <NeedsYou />
         </Suspense>

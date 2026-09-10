@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
+import { StartLive } from "@/components/StartLive";
 import {
   blockPlayer,
   reportPlayer,
@@ -77,6 +78,10 @@ export function PlayerActions({
             Challenge
           </SubmitButton>
         </ActionForm>
+      </div>
+
+      <div className="mt-2.5">
+        <StartLive opponentId={playerId} label="Playing now? Start scoring" />
       </div>
 
       <button

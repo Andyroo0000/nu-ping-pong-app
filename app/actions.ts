@@ -523,6 +523,88 @@ export async function sendSuggestion(formData: FormData): Promise<ActionResult> 
 }
 
 // ---------------------------------------------------------------------------
+// Live scoreboards
+// ---------------------------------------------------------------------------
+
+/** Start (or resume) a live scoreboard against someone, then open it. */
+export async function startLiveMatch(formData: FormData): Promise<ActionResult> {
+  const opponentId = String(formData.get("opponentId") ?? "");
+  const bestOf = Number(formData.get("bestOf") ?? 3);
+  const isRanked = String(formData.get("matchKind") ?? "ranked") !== "casual";
+  if (!opponentId) return { ok: false, error: "Pick someone to play." };
+
+  const supabase = await createClient();
+  const { data: liveId, error } = await supabase.rpc("start_live_match", {
+    p_opponent: opponentId,
+    p_best_of: [1, 3, 5].includes(bestOf) ? bestOf : 3,
+    p_is_ranked: isRanked,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const me = await currentPlayerName(supabase);
+  await notify(opponentId, "challenge", {
+    title: "Match started",
+    body: `${me} started a scoreboard for your match. Follow along or take over scoring.`,
+    url: `/live/${liveId}`,
+    tag: "live",
+  });
+
+  revalidatePath("/home");
+  redirect(`/live/${liveId}`);
+}
+
+/**
+ * Turn a finished scoreboard into a pending match for the opponent to
+ * confirm. Ratings still only move on confirmation — a scoreboard is a way to
+ * keep score, not a way to skip agreement.
+ */
+export async function submitLiveMatch(formData: FormData): Promise<ActionResult> {
+  const liveId = String(formData.get("liveId") ?? "");
+  if (!liveId) return { ok: false, error: "Missing match." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("submit_live_match", { p_id: liveId });
+  if (error) return { ok: false, error: error.message };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: live } = await supabase
+    .from("live_matches")
+    .select("player_a, player_b")
+    .eq("id", liveId)
+    .maybeSingle();
+
+  const other =
+    live && user ? (live.player_a === user.id ? live.player_b : live.player_a) : null;
+  if (other) {
+    const me = await currentPlayerName(supabase);
+    await notify(other, "confirmation", {
+      title: "Confirm a result",
+      body: `${me} submitted your match. Confirm or dispute it.`,
+      url: "/home",
+      tag: "confirmation",
+    });
+  }
+
+  revalidatePath("/home");
+  revalidatePath("/leaderboard");
+  return { ok: true, message: "Sent for confirmation." };
+}
+
+export async function abandonLiveMatch(formData: FormData): Promise<ActionResult> {
+  const liveId = String(formData.get("liveId") ?? "");
+  if (!liveId) return { ok: false, error: "Missing match." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("abandon_live_match", { p_id: liveId });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/home");
+  redirect("/home");
+}
+
+// ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
 

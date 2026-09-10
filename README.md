@@ -32,8 +32,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      rating weighted by how decisive a match was, and the suggestion box.
    - [`supabase/migrations/0009_one_chat_per_pair.sql`](supabase/migrations/0009_one_chat_per_pair.sql) —
      one chat thread per pair of players, instead of a new one per match.
+   - [`supabase/migrations/0010_live_matches.sql`](supabase/migrations/0010_live_matches.sql) —
+     live scoreboards the club can watch.
 
-   0002 through 0009 are additive: safe to run on a database that already has
+   0002 through 0010 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -47,7 +49,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0006 notifications', to_regclass('public.push_subscriptions') is not null
    union all select '0007 chat + block + report', to_regclass('public.blocks') is not null
    union all select '0008 margin elo + suggestions', to_regclass('public.suggestions') is not null
-   union all select '0009 one chat per pair', to_regproc('public.channel_between') is not null;
+   union all select '0009 one chat per pair', to_regproc('public.channel_between') is not null
+   union all select '0010 live scoreboards', to_regclass('public.live_matches') is not null;
    ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
@@ -182,6 +185,32 @@ any `@northeastern.edu` email and a password.
   moment later, with nothing to clean up. The trade is that presence is
   in-memory only, so it can't answer "when were they last here" — that would
   need a `last_seen_at` column and a heartbeat.
+- **Live scoreboards** (`app/live/[id]`) — you're at the table with your phone.
+  Tap a half of the screen per point; the score broadcasts to your opponent and
+  to anyone in the club who wants to follow along, and "Being played now" shows
+  on the home page. When the match ends it becomes a normal pending match for
+  the opponent to confirm, so **a scoreboard is a way to keep score, not a way
+  to skip agreement** — ratings still only move on confirmation.
+
+  Three things worth knowing before changing it:
+
+  - **One scorer, not two.** `scorer` on the row is the sole authority; the
+    other player can *take over* scoring, which moves authority rather than
+    sharing it. Two phones writing would double-count the moment both players
+    reach for them after a rally.
+  - **Taps apply locally first**, and the realtime update reconciles a moment
+    later. Waiting on a round trip mid-rally is unusable. The database stays
+    authoritative — every broadcast overwrites local state.
+  - **`rally` exists so undo works.** It records the current game's points in
+    order. Deriving "who scored last" from the score instead — decrement
+    whoever's ahead — is wrong the moment the trailing player scores: at 5–3
+    with B scoring last, that guesses A. Undo also reaches back across a game
+    boundary, since a mis-tap that ends a game would otherwise be
+    unrecoverable.
+
+  The rules live in SQL and are mirrored in [`lib/live.ts`](lib/live.ts) for
+  the optimistic path. Both must be kept in step; a game is to 11 but must be
+  won by two, so 10–10 keeps going.
 - **Chat** (`app/chats`) — accepting a challenge or getting paired opens a
   two-person channel. Live via Supabase Realtime on `public.messages`, with a
   slow poll as a fallback. A new channel opens with a system message and a few

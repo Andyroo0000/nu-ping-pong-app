@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
 import { ChatSkeleton } from "@/components/Skeletons";
+import { StartLive } from "@/components/StartLive";
 import { OnlineAvatarWrapper, OnlineLabel } from "@/components/OnlineDot";
 import { ChatRoom } from "./ChatRoom";
 import { displayName } from "@/lib/names";
@@ -81,12 +82,7 @@ async function ChatHeader({ params }: { params: Params }) {
       </div>
       {other && (
         <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            href={`/log-match?opponent=${other.id}`}
-            className="whitespace-nowrap rounded-[9px] border border-ink-bright bg-ink-dim px-3 py-2 text-xs font-bold"
-          >
-            Log score
-          </Link>
+          <StartLive opponentId={other.id} label="Score it" compact />
           <Link
             href={`/profile/${other.username}`}
             aria-label={`${displayName(other)}'s profile, where you can block or report them`}

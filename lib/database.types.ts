@@ -303,6 +303,42 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
         Relationships: [];
       };
+      live_matches: {
+        Row: {
+          id: string;
+          player_a: string;
+          player_b: string;
+          scorer: string;
+          best_of: number;
+          is_ranked: boolean;
+          games: MatchGame[];
+          rally: boolean[];
+          points_a: number;
+          points_b: number;
+          status: "live" | "finished" | "abandoned";
+          match_id: string | null;
+          started_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          player_a: string;
+          player_b: string;
+          scorer: string;
+          best_of?: number;
+          is_ranked?: boolean;
+          games?: MatchGame[];
+          rally?: boolean[];
+          points_a?: number;
+          points_b?: number;
+          status?: "live" | "finished" | "abandoned";
+          match_id?: string | null;
+          started_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["live_matches"]["Insert"]>;
+        Relationships: [];
+      };
       suggestions: {
         Row: {
           id: string;
@@ -431,6 +467,33 @@ export interface Database {
       };
       pair_with_player: { Args: { p_opponent: string }; Returns: string };
       open_direct_channel: { Args: { p_other: string }; Returns: string };
+      start_live_match: {
+        Args: { p_opponent: string; p_best_of?: number; p_is_ranked?: boolean };
+        Returns: string;
+      };
+      live_point: { Args: { p_id: string; p_for_a: boolean }; Returns: undefined };
+      live_undo: { Args: { p_id: string }; Returns: undefined };
+      take_scoring: { Args: { p_id: string }; Returns: undefined };
+      submit_live_match: { Args: { p_id: string }; Returns: string };
+      abandon_live_match: { Args: { p_id: string }; Returns: undefined };
+      live_now: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          player_a: string;
+          player_b: string;
+          name_a: string;
+          name_b: string;
+          avatar_a: string | null;
+          avatar_b: string | null;
+          best_of: number;
+          is_ranked: boolean;
+          games: MatchGame[];
+          points_a: number;
+          points_b: number;
+          updated_at: string;
+        }[];
+      };
       is_blocked_pair: { Args: { p_a: string; p_b: string }; Returns: boolean };
       blocked_ids: { Args: Record<string, never>; Returns: string[] };
       casual_record: {
