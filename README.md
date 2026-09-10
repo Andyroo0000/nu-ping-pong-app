@@ -39,9 +39,12 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0012_placements_and_performance.sql`](supabase/migrations/0012_placements_and_performance.sql) —
      placement matches, a K falloff by rating, and performance-based rating.
    - [`supabase/migrations/0013_faster_early_climb.sql`](supabase/migrations/0013_faster_early_climb.sql) —
-     K bands realigned to the refitted tier boundaries.
+     K bands realigned to the refitted rank boundaries.
+   - [`supabase/migrations/0014_merge_duplicate_chats.sql`](supabase/migrations/0014_merge_duplicate_chats.sql) —
+     merges the duplicate chats 0009's bug had already created, and moves the
+     reuse check inside `create_channel_between` so a duplicate can't be made.
 
-   0002 through 0013 are additive: safe to run on a database that already has
+   0002 through 0014 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -62,8 +65,16 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
              where table_schema='public' and table_name='profiles'
                and column_name='onboarded_at')
    union all select '0012 placements', to_regproc('public.elo_k') is not null;
-   -- 0013 only replaces a function, so check its behaviour instead:
+   -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
+   --   -- after 0014 this is empty; before it, it lists pairs with two threads
+   --   select a.user_id, b.user_id, count(*)
+   --   from public.channel_members a
+   --   join public.channel_members b
+   --     on b.channel_id = a.channel_id and b.user_id > a.user_id
+   --   where (select count(*) from public.channel_members m
+   --          where m.channel_id = a.channel_id) = 2
+   --   group by 1, 2 having count(*) > 1;
    ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
