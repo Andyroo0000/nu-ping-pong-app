@@ -2,8 +2,16 @@
 // Used only for the "if confirmed" preview before submitting — the database
 // function is the source of truth. Keep the two in step.
 
-/** How much of `actual` comes from the game score rather than the result. */
-const MARGIN_WEIGHT = 0.2;
+/**
+ * How much of `actual` comes from the margin rather than the result.
+ *
+ * 0.35 rather than 0.2 because margin is now point share, which sits much
+ * closer to 0.5 than game share does — a sweep is game share 1.00 but often
+ * point share 0.6, so the old weight on the smaller signal would have made
+ * margin matter less than before. Past ~0.35 a hard-fought win between
+ * equals falls into single digits and margin starts overruling who won.
+ */
+const MARGIN_WEIGHT = 0.35;
 /** Ranked matches before a player is considered placed. */
 export const PLACEMENT_MATCHES = 10;
 /** Matches floor_rating in confirm_match(). */
@@ -48,12 +56,53 @@ function evidence(gamesWonWinner: number): number {
  * What actually happened, as a score between 0 and 1.
  *
  * Mostly "did you win", partly "by how much" — so a 3-0 beats a 3-2 without
- * margin overwhelming the result. Weighting margin any higher made a close win
- * between equals worth about +4, which reads as broken.
+ * margin overwhelming the result. `share` is the share of all POINTS played,
+ * not games: game share can't tell a 3-0 in 11-2s from a 3-0 in 11-9s, which
+ * meant being annihilated and losing three tight games paid the same.
  */
-function actualScore(won: boolean, gamesFor: number, gamesAgainst: number): number {
-  const share = gamesFor / (gamesFor + gamesAgainst);
+function actualScore(won: boolean, share: number): number {
   return (1 - MARGIN_WEIGHT) * (won ? 1 : 0) + MARGIN_WEIGHT * share;
+}
+
+/**
+ * Games and points from one player's side of a match.
+ *
+ * Both the games won and the point totals come from the same array, so a
+ * caller can't pass a game count that disagrees with the points — which is
+ * the one way the preview could drift from what the database will do.
+ */
+export function tally(
+  games: { a: number; b: number }[],
+  side: "a" | "b"
+): { gamesFor: number; gamesAgainst: number; pointsFor: number; pointsAgainst: number } {
+  let gamesFor = 0;
+  let gamesAgainst = 0;
+  let pointsFor = 0;
+  let pointsAgainst = 0;
+  for (const g of games) {
+    const mine = side === "a" ? g.a : g.b;
+    const theirs = side === "a" ? g.b : g.a;
+    pointsFor += mine;
+    pointsAgainst += theirs;
+    if (mine > theirs) gamesFor++;
+    else if (theirs > mine) gamesAgainst++;
+  }
+  return { gamesFor, gamesAgainst, pointsFor, pointsAgainst };
+}
+
+/**
+ * Mirrors match_point_share(): the winner's share of all points, falling back
+ * to game share when no point totals were recorded.
+ */
+function marginShare(t: {
+  gamesFor: number;
+  gamesAgainst: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}): number {
+  const points = t.pointsFor + t.pointsAgainst;
+  if (points > 0) return t.pointsFor / points;
+  return t.gamesFor / (t.gamesFor + t.gamesAgainst);
 }
 
 /**
@@ -65,16 +114,18 @@ export function ratingChange(args: {
   myRating: number;
   myMatchesPlayed: number;
   opponentRating: number;
-  gamesFor: number;
-  gamesAgainst: number;
+  games: { a: number; b: number }[];
+  /** Which side of `games` is mine. */
+  side: "a" | "b";
 }): number {
-  const { myRating, myMatchesPlayed, opponentRating, gamesFor, gamesAgainst } = args;
-  const won = gamesFor > gamesAgainst;
+  const { myRating, myMatchesPlayed, opponentRating, games, side } = args;
+  const t = tally(games, side);
+  const won = t.gamesFor > t.gamesAgainst;
   const k = eloK(myRating, myMatchesPlayed);
   const raw =
     k *
-    evidence(Math.max(gamesFor, gamesAgainst)) *
-    (actualScore(won, gamesFor, gamesAgainst) - expectedScore(myRating, opponentRating));
+    evidence(Math.max(t.gamesFor, t.gamesAgainst)) *
+    (actualScore(won, marginShare(t)) - expectedScore(myRating, opponentRating));
 
   if (won) return Math.max(1, Math.round(raw));
   const loss = Math.max(1, Math.round(-raw));
@@ -86,20 +137,27 @@ export function ratingNote(args: {
   myMatchesPlayed: number;
   myRating: number;
   opponentRating: number;
-  gamesFor: number;
-  gamesAgainst: number;
+  games: { a: number; b: number }[];
+  side: "a" | "b";
 }): string | null {
-  const { myMatchesPlayed, myRating, opponentRating, gamesFor, gamesAgainst } = args;
+  const { myMatchesPlayed, myRating, opponentRating, games, side } = args;
   const left = PLACEMENT_MATCHES - myMatchesPlayed;
   if (left > 0) {
     return `Placement match — ${left} to go. Your rating moves a lot until it settles.`;
   }
+  const t = tally(games, side);
+  const won = t.gamesFor > t.gamesAgainst;
   const gap = opponentRating - myRating;
-  if (gamesFor > gamesAgainst && gap >= 150) return "Beating someone above you is worth more.";
-  if (gamesFor > gamesAgainst && gap <= -150) {
-    return "They're well below you, so there's not much to gain.";
-  }
-  if (Math.abs(gamesFor - gamesAgainst) >= 3) return "Clean sweep — counts for a little more.";
+  if (won && gap >= 150) return "Beating someone above you is worth more.";
+  if (won && gap <= -150) return "They're well below you, so there's not much to gain.";
+
+  // Margin is measured in points now, so the note should be too — a 3-0 in
+  // 11-9s isn't the sweep the game score makes it look like.
+  const share = marginShare(t);
+  if (won && share >= 0.62) return "You won most of the points too — worth a little more.";
+  if (won && share <= 0.54) return "Close on points, so it's worth a little less.";
+  if (!won && share <= 0.38) return "One-sided on points, so it costs a little more.";
+  if (!won && share >= 0.46) return "You were right there on points — it costs a little less.";
   if (myRating >= 1350) return "Near the top, ratings move slowly by design.";
   return null;
 }

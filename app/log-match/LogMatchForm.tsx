@@ -124,8 +124,8 @@ export function LogMatchForm() {
         myRating,
         myMatchesPlayed: myPlayed,
         opponentRating: opponent.rating,
-        gamesFor: gamesWonMe,
-        gamesAgainst: gamesWonOpp,
+        games: filledGames,
+        side: "a",
       });
     oppNewRating =
       opponent.rating +
@@ -133,8 +133,8 @@ export function LogMatchForm() {
         myRating: opponent.rating,
         myMatchesPlayed: opponent.wins + opponent.losses,
         opponentRating: myRating,
-        gamesFor: gamesWonOpp,
-        gamesAgainst: gamesWonMe,
+        games: filledGames,
+        side: "b",
       });
   }
 
@@ -144,8 +144,8 @@ export function LogMatchForm() {
           myMatchesPlayed: myPlayed,
           myRating,
           opponentRating: opponent.rating,
-          gamesFor: gamesWonMe,
-          gamesAgainst: gamesWonOpp,
+          games: filledGames,
+          side: "a",
         })
       : null;
 

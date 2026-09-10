@@ -43,8 +43,11 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    - [`supabase/migrations/0014_merge_duplicate_chats.sql`](supabase/migrations/0014_merge_duplicate_chats.sql) —
      merges the duplicate chats 0009's bug had already created, and moves the
      reuse check inside `create_channel_between` so a duplicate can't be made.
+   - [`supabase/migrations/0015_point_margin.sql`](supabase/migrations/0015_point_margin.sql) —
+     margin measured in points rather than games, so a 3-0 in 11-2s and a 3-0
+     in 11-9s stop paying the same.
 
-   0002 through 0014 are additive: safe to run on a database that already has
+   0002 through 0015 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
