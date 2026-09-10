@@ -68,6 +68,9 @@ export interface Database {
           reported_by: string;
           status: MatchStatus;
           rating_delta: number | null;
+          /** The loser's drop, which can differ from the winner's gain: each
+              side's K depends on their own experience and rating. */
+          rating_delta_loser: number | null;
           played_at: string;
           confirmed_at: string | null;
           is_ranked: boolean;
@@ -83,6 +86,7 @@ export interface Database {
           reported_by: string;
           status?: MatchStatus;
           rating_delta?: number | null;
+          rating_delta_loser?: number | null;
           played_at?: string;
           confirmed_at?: string | null;
           is_ranked?: boolean;

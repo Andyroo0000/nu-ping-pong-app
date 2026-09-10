@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { weightLabel, winnerRatingDelta } from "@/lib/elo";
+import { ratingChange, ratingNote } from "@/lib/elo";
 import { displayName, firstName, initials } from "@/lib/names";
 import { reportMatch } from "@/app/actions";
 
@@ -12,6 +12,8 @@ type OpponentOption = {
   username: string;
   full_name: string | null;
   rating: number;
+  wins: number;
+  losses: number;
 };
 
 export function LogMatchForm() {
@@ -22,6 +24,7 @@ export function LogMatchForm() {
 
   const [myId, setMyId] = useState<string | null>(null);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [myPlayed, setMyPlayed] = useState(0);
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<OpponentOption[]>([]);
@@ -46,10 +49,11 @@ export function LogMatchForm() {
       setMyId(user.id);
       const { data } = await supabase
         .from("profiles")
-        .select("rating")
+        .select("rating, wins, losses")
         .eq("id", user.id)
         .single();
       setMyRating(data?.rating ?? 1000);
+      setMyPlayed((data?.wins ?? 0) + (data?.losses ?? 0));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -61,7 +65,7 @@ export function LogMatchForm() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, username, full_name, rating")
+        .select("id, username, full_name, rating, wins, losses")
         .eq("id", opponentId)
         .single();
       if (data) setOpponent(data);
@@ -89,7 +93,7 @@ export function LogMatchForm() {
       }
       const { data } = await supabase
         .from("profiles")
-        .select("id, username, full_name, rating")
+        .select("id, username, full_name, rating, wins, losses")
         .or(`full_name.ilike.%${term}%,username.ilike.%${term}%`)
         .neq("id", myId)
         .limit(5);
@@ -111,18 +115,39 @@ export function LogMatchForm() {
   const isRanked = matchKind === "ranked";
   let myNewRating: number | null = null;
   let oppNewRating: number | null = null;
-  let delta = 0;
   if (isRanked && hasResult && myRating != null && opponent) {
-    delta = iWon
-      ? winnerRatingDelta(myRating, opponent.rating, gamesWonMe, gamesWonOpp)
-      : -winnerRatingDelta(opponent.rating, myRating, gamesWonOpp, gamesWonMe);
-    myNewRating = myRating + delta;
-    oppNewRating = opponent.rating - delta;
+    // Each player's change uses their own K, so they aren't mirror images —
+    // a placement player swings hard while a settled opponent barely moves.
+    myNewRating =
+      myRating +
+      ratingChange({
+        myRating,
+        myMatchesPlayed: myPlayed,
+        opponentRating: opponent.rating,
+        gamesFor: gamesWonMe,
+        gamesAgainst: gamesWonOpp,
+      });
+    oppNewRating =
+      opponent.rating +
+      ratingChange({
+        myRating: opponent.rating,
+        myMatchesPlayed: opponent.wins + opponent.losses,
+        opponentRating: myRating,
+        gamesFor: gamesWonOpp,
+        gamesAgainst: gamesWonMe,
+      });
   }
 
-  const weightNote = hasResult
-    ? weightLabel(Math.max(gamesWonMe, gamesWonOpp), Math.min(gamesWonMe, gamesWonOpp))
-    : null;
+  const weightNote =
+    isRanked && hasResult && myRating != null && opponent
+      ? ratingNote({
+          myMatchesPlayed: myPlayed,
+          myRating,
+          opponentRating: opponent.rating,
+          gamesFor: gamesWonMe,
+          gamesAgainst: gamesWonOpp,
+        })
+      : null;
 
   function updateGame(i: number, side: "a" | "b", value: string) {
     setGames((prev) => prev.map((g, idx) => (idx === i ? { ...g, [side]: value } : g)));

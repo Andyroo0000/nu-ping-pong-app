@@ -11,6 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { NavSkeleton, ProfileSkeleton } from "@/components/Skeletons";
 import { displayName, firstName } from "@/lib/names";
+import { PLACEMENT_MATCHES } from "@/lib/elo";
 import { PlayerActions } from "@/components/PlayerActions";
 import { availabilityLabels, playPreferenceLabel, yearLabel } from "@/lib/profile";
 import { confirmMatch, declineMatch } from "@/app/actions";
@@ -73,7 +74,7 @@ async function ProfileBody({ params }: { params: Params }) {
       supabase
         .from("matches")
         .select(
-          "id, player_a, player_b, winner, rating_delta, confirmed_at, games_won_a, games_won_b, is_ranked, profiles_a:profiles!player_a(full_name, username), profiles_b:profiles!player_b(full_name, username)"
+          "id, player_a, player_b, winner, rating_delta, rating_delta_loser, confirmed_at, games_won_a, games_won_b, is_ranked, profiles_a:profiles!player_a(full_name, username), profiles_b:profiles!player_b(full_name, username)"
         )
         .or(`player_a.eq.${profile.id},player_b.eq.${profile.id}`)
         .eq("status", "confirmed")
@@ -102,6 +103,7 @@ async function ProfileBody({ params }: { params: Params }) {
   const casualTotal = casualRecord.wins + casualRecord.losses;
 
   const totalMatches = profile.wins + profile.losses;
+  const placementsLeft = Math.max(PLACEMENT_MATCHES - totalMatches, 0);
   const winRate = totalMatches > 0 ? Math.round((profile.wins / totalMatches) * 100) : 0;
 
   let streak = 0;
@@ -134,10 +136,28 @@ async function ProfileBody({ params }: { params: Params }) {
             Rank #{(rank ?? 0) + 1} overall
           </div>
 
-          <TierProgress
-            rating={profile.rating}
-            className="mt-5 w-full rounded-2xl border border-border bg-surface p-4 text-left"
-          />
+          {placementsLeft > 0 ? (
+            <div className="mt-5 w-full rounded-2xl border-2 border-nu-line bg-nu-wash p-4 text-left">
+              <div className="text-sm font-bold">
+                {placementsLeft} placement {placementsLeft === 1 ? "match" : "matches"} to go
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
+                Ratings move fast until they settle, so this number will jump around. After
+                ten ranked matches it steadies and tiers start to mean something.
+              </p>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-nu-bright to-nu"
+                  style={{ width: `${Math.round(((10 - placementsLeft) / 10) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <TierProgress
+              rating={profile.rating}
+              className="mt-5 w-full rounded-2xl border border-border bg-surface p-4 text-left"
+            />
+          )}
 
           <div className="mt-3 flex flex-wrap justify-center gap-1.5">
             <Chip>{playPreferenceLabel(profile.play_preference)}</Chip>
@@ -266,7 +286,7 @@ async function ProfileBody({ params }: { params: Params }) {
                     }`}
                   >
                     {won ? "+" : "−"}
-                    {m.rating_delta ?? 0}
+                    {(won ? m.rating_delta : (m.rating_delta_loser ?? m.rating_delta)) ?? 0}
                   </div>
                 ) : (
                   <div className="text-[11px] font-bold text-text-faint">Casual</div>

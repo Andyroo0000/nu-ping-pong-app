@@ -12,6 +12,7 @@ import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { Avatar } from "@/components/Avatar";
 import { LadderSkeleton, NavSkeleton } from "@/components/Skeletons";
 import { displayName } from "@/lib/names";
+import { PLACEMENT_MATCHES } from "@/lib/elo";
 
 // The page function itself does no data access, so this whole frame is
 // prerendered into a static shell and served the instant you click through.
@@ -49,7 +50,7 @@ async function Ladder() {
     getCurrentUser(),
     supabase
       .from("profiles")
-      .select("id, username, full_name, rating, wins, losses")
+      .select("id, username, full_name, rating, wins, losses, avatar_path")
       .order("rating", { ascending: false }),
   ]);
 
@@ -84,7 +85,17 @@ async function Ladder() {
             </OnlineAvatarWrapper>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold">{displayName(p)}</div>
-              <TierBadge rating={p.rating} size="sm" short className="mt-1" />
+              <span className="mt-1 flex items-center gap-1.5">
+                <TierBadge rating={p.rating} size="sm" short />
+                {p.wins + p.losses < PLACEMENT_MATCHES && (
+                  <span
+                    className="rounded-full border border-border-strong px-1.5 py-0.5 text-[10px] font-bold text-text-faint"
+                    title="Still in placement matches — rating hasn't settled"
+                  >
+                    P
+                  </span>
+                )}
+              </span>
             </div>
             <div className="shrink-0 text-right">
               <div

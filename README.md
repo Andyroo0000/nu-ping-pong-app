@@ -36,8 +36,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      live scoreboards the club can watch.
    - [`supabase/migrations/0011_onboarding.sql`](supabase/migrations/0011_onboarding.sql) —
      remembers who has seen the walkthrough.
+   - [`supabase/migrations/0012_placements_and_performance.sql`](supabase/migrations/0012_placements_and_performance.sql) —
+     placement matches, a K falloff by rating, and performance-based rating.
 
-   0002 through 0011 are additive: safe to run on a database that already has
+   0002 through 0012 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -56,7 +58,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0011 onboarding',
      exists (select 1 from information_schema.columns
              where table_schema='public' and table_name='profiles'
-               and column_name='onboarded_at');
+               and column_name='onboarded_at')
+   union all select '0012 placements', to_regproc('public.elo_k') is not null;
    ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
@@ -143,24 +146,47 @@ any `@northeastern.edu` email and a password.
   `casual_record()` and don't touch rating, win/loss, or your streak.
   Matchmaking prefers to pair like with like, so someone here to rally isn't
   handed to someone chasing a rating.
-- **Ratings** — Elo computed server-side in SQL, base K = 32. Standard Elo
-  already scales by the rating gap: at 1200 you gain +3 for beating an 800 and
-  +29 for beating a 1600, and losses mirror it. On top of that, two multipliers
-  weight *how* you won:
+- **Ratings** — Elo computed server-side in SQL, mirrored in
+  [`lib/elo.ts`](lib/elo.ts) for the log-match preview. Three parts:
 
   | | |
   | --- | --- |
-  | evidence | race to 1 game `0.60` · to 2 (best of 3) `1.00` · to 3+ `1.20` |
-  | margin | won by 1 game `1.00` · by 2 `1.15` · by 3+ `1.30` |
+  | K by experience | first 10 ranked matches `64` (placements) |
+  | K by rating | `<1200` 32 · `<1400` 28 · `<1600` 24 · `<1800` 20 · `1800+` 16 |
+  | actual score | `0.8 x (won ? 1 : 0) + 0.2 x (games won / games played)` |
 
-  At equal ratings that runs from +10 for a single game to +25 for a 3-0 in a
-  best-of-five, against a flat +16 before. **Evidence keys off the winner's
-  game count, not the total played** — using the total made a 3-1 outrank a 3-0
-  sweep, which is backwards. The winner's tally names the format.
+  plus an evidence multiplier for the format (one game `0.60`, best of three
+  `1.00`, best of five `1.20`), keyed off the winner's game count.
 
-  Match formats are one game, best of three, or best of five. The number shown
-  while filling out the log-match form (`lib/elo.ts`) is a preview only; the
-  database function is the source of truth, and the two must be kept in step.
+  Roughly: a placement win over an equal is +32, a settled win over an equal is
+  +16, an upset from 1100 over 1400 is +30, beating someone 300 below you is
+  +4, and at 1750 beating a 1200 is +1 while losing to them costs 21.
+
+  **Placements are the part that matters.** Simulating a 20-player club showed
+  the old flat K=32 and this model end up in the same place over a season —
+  Elo converges to true skill regardless of K, which only sets the speed. The
+  "everyone's in the same tier" problem is a sample-size problem, so the fix is
+  speed early on. Spread after 8 matches each goes from 296 points to 463, and
+  tiers occupied from 2.0 to 2.9.
+
+  **Winrate is deliberately not an input.** Rating already *is* accumulated
+  performance against the field, so feeding winrate in as well counts the same
+  evidence twice — and it rewards someone who only plays weaker opponents, who
+  gets both a high winrate and a boost from having one.
+
+  **Each player's delta uses their own K, so club total rating is not
+  conserved.** That's the price of placements working: a newcomer has to swing
+  hard while the veteran they beat barely moves. FIDE makes the same trade. The
+  drift is small — the season simulation moved the club average from 1000 to
+  995 over 600 matches — but it isn't pinned, so keep an eye on it:
+
+  ```sql
+  select round(avg(rating)) as club_average, count(*) from profiles;
+  ```
+
+  Unplaced players are marked `P` on the leaderboard and see their placement
+  progress on their own profile, so a wildly swinging number reads as expected
+  rather than broken.
 - **Tiers** (`lib/tiers.ts`) — Rookie Husky → Rally Regular → Spin Doctor →
   Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
   derived from rating.
