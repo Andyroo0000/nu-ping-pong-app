@@ -48,8 +48,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      in 11-9s stop paying the same.
    - [`supabase/migrations/0016_doubles.sql`](supabase/migrations/0016_doubles.sql) —
      doubles, on its own separate ladder.
+   - [`supabase/migrations/0017_result_integrity.sql`](supabase/migrations/0017_result_integrity.sql) —
+     closes two ways to give yourself rating with a hand-made REST call.
 
-   0002 through 0016 are additive: safe to run on a database that already has
+   0002 through 0017 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -71,7 +73,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
                and column_name='onboarded_at')
    union all select '0012 placements', to_regproc('public.elo_k') is not null
    union all select '0015 point margin', to_regproc('public.match_point_share') is not null
-   union all select '0016 doubles', to_regclass('public.doubles_matches') is not null;
+   union all select '0016 doubles', to_regclass('public.doubles_matches') is not null
+   union all select '0017 result integrity', to_regproc('public.games_won_from') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -261,6 +264,20 @@ any `@northeastern.edu` email and a password.
   ([`components/HowToPlay.tsx`](components/HowToPlay.tsx)) re-opens the same
   four cards on demand — one copy of the rules to keep correct instead of a
   separate rules page, and dismissing it doesn't touch `onboarded_at`.
+- **Result integrity** (migration 0017) — a reported result is constrained at
+  the database level, not just in the form. The reporter must be `player_a`,
+  and the winner and game counts must agree with the scores. Both were
+  exploitable with a hand-made REST call before 0017 — the anon key ships in
+  the browser bundle, so anyone can make one:
+  - Seating yourself as `player_b` made you both the reporter and the
+    confirmer, so you could confirm your own win. Measured at +38 rating with
+    no input from the opponent.
+  - `winner` was only checked to be one of the two players, so "I lost 3-0,
+    and I won" was a valid row that read as a normal loss until confirmed.
+
+  The constraints are added `NOT VALID` then validated separately, so a
+  legacy row that disagrees reports a notice instead of aborting the
+  migration. New rows are checked either way.
 - **Doubles** (`app/doubles`, migration 0016) — a **separate ladder**.
   `profiles.doubles_rating` is its own number with its own placements, and a
   doubles result never touches a singles rating. Feeding one ladder from both
