@@ -176,14 +176,27 @@ $$;
 -- ---------------------------------------------------------------------------
 -- active_queue / queue_elsewhere — carry the mode through.
 --
--- Both change return shape, so they're dropped first. queue_elsewhere gets a
--- p_mode parameter with a default; the old one-argument call still resolves,
--- but the old function must go or `queue_elsewhere('hall')` would be
--- ambiguous between the two.
+-- These two need opposite treatment, which is easy to get wrong:
+--
+--   * active_queue is REPLACED, with the new column appended (see below).
+--   * queue_elsewhere is DROPPED first, because its return type changes and
+--     create-or-replace cannot do that. It also gains a p_mode parameter with
+--     a default, so the old one-argument call still resolves — but the old
+--     function has to go or `queue_elsewhere('hall')` would be ambiguous
+--     between the one- and two-argument versions.
 -- ---------------------------------------------------------------------------
+-- `mode` goes LAST, not in its natural place next to play_style. CREATE OR
+-- REPLACE VIEW can only append columns: put a new one in the middle and
+-- Postgres reads it as renaming the column that was already in that position
+-- and refuses —
+--   ERROR: cannot change name of view column "joined_at" to "mode"
+-- Dropping and recreating would avoid that but would also drop the grant and
+-- anything that comes to depend on the view later. Column order in a view is
+-- cosmetic here since everything selects by name, so appending is the cheap
+-- correct answer.
 create or replace view public.active_queue
 with (security_invoker = true) as
-  select user_id, location, note, play_style, mode, joined_at, expires_at
+  select user_id, location, note, play_style, joined_at, expires_at, mode
   from public.queue_entries
   where expires_at > now();
 
