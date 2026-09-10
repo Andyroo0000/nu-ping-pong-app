@@ -38,8 +38,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      remembers who has seen the walkthrough.
    - [`supabase/migrations/0012_placements_and_performance.sql`](supabase/migrations/0012_placements_and_performance.sql) —
      placement matches, a K falloff by rating, and performance-based rating.
+   - [`supabase/migrations/0013_faster_early_climb.sql`](supabase/migrations/0013_faster_early_climb.sql) —
+     K bands realigned to the refitted tier boundaries.
 
-   0002 through 0012 are additive: safe to run on a database that already has
+   0002 through 0013 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -60,6 +62,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
              where table_schema='public' and table_name='profiles'
                and column_name='onboarded_at')
    union all select '0012 placements', to_regproc('public.elo_k') is not null;
+   -- 0013 only replaces a function, so check its behaviour instead:
+   --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    ```
 3. In **Authentication → Providers**, enable **Email**. **Confirm email** can
    be on or off — the sign-up form handles both (with it on, players get a
@@ -152,7 +156,7 @@ any `@northeastern.edu` email and a password.
   | | |
   | --- | --- |
   | K by experience | first 10 ranked matches `64` (placements) |
-  | K by rating | `<1200` 32 · `<1400` 28 · `<1600` 24 · `<1800` 20 · `1800+` 16 |
+  | K by rating | `<1050` 40 · `<1200` 34 · `<1350` 28 · `<1525` 22 · `1525+` 18 |
   | actual score | `0.8 x (won ? 1 : 0) + 0.2 x (games won / games played)` |
 
   plus an evidence multiplier for the format (one game `0.60`, best of three
@@ -187,6 +191,17 @@ any `@northeastern.edu` email and a password.
   Unplaced players are marked `P` on the leaderboard and see their placement
   progress on their own profile, so a wildly swinging number reads as expected
   rather than broken.
+- **Tier boundaries are fitted to a small club's rating range**, not to round
+  numbers, and that matters more than K does. They were originally 200 points
+  apart from 1000, which put most of the ladder out of reach: modelling a
+  1000-rated player showed 74 wins to reach 1400 and *never* to 1600, because
+  you cannot rate 1600 by beating 1000s — Elo is relative.
+
+  Raising K does not fix that. Modelling showed it barely changes the wins
+  needed for a promotion, since climbing above your opponents shrinks every
+  win. **Tier width is the lever.** From a 1000 start against an improving
+  field it's now roughly 2 wins to the first promotion, 7 to the next, then 14
+  and 32.
 - **Tiers** (`lib/tiers.ts`) — Rookie Husky → Rally Regular → Spin Doctor →
   Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
   derived from rating.
@@ -226,6 +241,13 @@ any `@northeastern.edu` email and a password.
   on a laptop isn't walked through it again on their phone. Migration 0011
   backfills existing players so nobody gets ambushed with a tour of features
   they've been using for weeks.
+- **Playing now** (`app/live`) — every match being scored right now, with the
+  point scores updating live. Only the score on each row is a Client
+  Component, so a page full of live matches costs one small subscription per
+  row instead of making the whole list client-side. It shares a toggle with
+  matchmaking ([`components/PlayTabs.tsx`](components/PlayTabs.tsx)) — finding
+  a game and watching the games already happening are two halves of the same
+  thing, and pairing them keeps the bottom bar at five tabs.
 - **Live scoreboards** (`app/live/[id]`) — you're at the table with your phone.
   Tap a half of the screen per point; the score broadcasts to your opponent and
   to anyone in the club who wants to follow along, and "Being played now" shows

@@ -20,9 +20,14 @@ export async function LiveNow() {
 
   return (
     <div className="mt-7">
-      <div className="mb-3 flex items-center gap-2 text-base font-bold">
-        <span className="live-dot block h-2 w-2 rounded-full bg-live" />
-        {mine.length > 0 ? "Your game" : "Being played now"}
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <span className="flex items-center gap-2 text-base font-bold">
+          <span className="live-dot block h-2 w-2 rounded-full bg-live" />
+          {mine.length > 0 ? "Your game" : "Being played now"}
+        </span>
+        <Link href="/live" className="text-xs font-bold text-nu-accent underline">
+          See all
+        </Link>
       </div>
 
       <div className="flex flex-col gap-2.5">

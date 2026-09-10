@@ -11,6 +11,7 @@ import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Avatar } from "@/components/Avatar";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
 import { PageHeader } from "@/components/PageHeader";
+import { PlayTabs } from "@/components/PlayTabs";
 import { OnlineAvatarWrapper } from "@/components/OnlineDot";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -52,6 +53,10 @@ export default function MatchmakingPage({ searchParams }: { searchParams: Params
       />
 
       <div className="mx-auto max-w-md px-6 pb-10">
+        <Suspense fallback={<PlayTabs />}>
+          <PlayTabsWithCount />
+        </Suspense>
+
         <InstallPrompt />
 
         <Suspense fallback={null}>
@@ -417,4 +422,11 @@ function Row({
       {children}
     </div>
   );
+}
+
+/** The live count needs a query, so it streams in behind the plain tabs. */
+async function PlayTabsWithCount() {
+  const supabase = await createClient();
+  const { data: live } = await supabase.rpc("live_now");
+  return <PlayTabs liveCount={live?.length ?? 0} />;
 }

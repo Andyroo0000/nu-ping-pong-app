@@ -21,16 +21,22 @@ export function expectedScore(ratingSelf: number, ratingOpponent: number): numbe
  * skill either way — but early on this separates people roughly 70% faster,
  * which is what fixes "everyone is in the same tier".
  *
- * The falloff above 1200 makes the top sticky: at 1800+ you only move
- * meaningfully against someone near your own level.
+ * The bands line up with the tier boundaries in lib/tiers.ts, and the falloff
+ * makes the top sticky: at 1525+ you only move meaningfully against someone
+ * near your own level.
+ *
+ * Raising K is not, on its own, how you make ranking up faster — modelling
+ * showed it barely changes the wins needed for a promotion, because climbing
+ * above your opponents shrinks every win. Tier width is the lever; see the
+ * note in lib/tiers.ts.
  */
 export function eloK(rating: number, matchesPlayed: number): number {
   if (matchesPlayed < PLACEMENT_MATCHES) return 64;
-  if (rating < 1200) return 32;
-  if (rating < 1400) return 28;
-  if (rating < 1600) return 24;
-  if (rating < 1800) return 20;
-  return 16;
+  if (rating < 1050) return 40;
+  if (rating < 1200) return 34;
+  if (rating < 1350) return 28;
+  if (rating < 1525) return 22;
+  return 18;
 }
 
 /** A single game is weaker evidence than a best-of-five. */
@@ -94,6 +100,6 @@ export function ratingNote(args: {
     return "They're well below you, so there's not much to gain.";
   }
   if (Math.abs(gamesFor - gamesAgainst) >= 3) return "Clean sweep — counts for a little more.";
-  if (myRating >= 1600) return "Near the top, ratings move slowly by design.";
+  if (myRating >= 1350) return "Near the top, ratings move slowly by design.";
   return null;
 }

@@ -42,7 +42,9 @@ export function BottomTabsBar({
               ? pathname.startsWith("/profile")
               : tab.label === "Club"
                 ? pathname === "/members" || pathname === "/leaderboard"
-                : pathname.startsWith(tab.href);
+                : tab.label === "Play"
+                  ? pathname.startsWith("/matchmaking") || pathname.startsWith("/live")
+                  : pathname.startsWith(tab.href);
 
           return (
             <li key={tab.label} className="flex-1">

@@ -14,13 +14,21 @@ export interface Tier {
 
 // Grey → bronze → steel → gold → Northeastern red → black. The jump to red at
 // Paddle Master is the point: the top two tiers wear the school colour.
+//
+// The boundaries are fitted to the rating range a small club actually occupies,
+// not to round numbers. They were originally 200 points apart starting at 1000,
+// which made the top half of the ladder unreachable: modelling a 1000-rated
+// player showed 74 wins to reach 1400 and *never* to 1600, because you cannot
+// rate 1600 by beating 1000s — Elo is relative. Narrower early bands give a
+// promotion after about two wins and the next after seven, then it stretches
+// out, so climbing stays quick at the bottom and means something at the top.
 export const TIERS: Tier[] = [
   {
     level: 1,
     name: "Rookie Husky",
     short: "Rookie",
     min: 0,
-    max: 999,
+    max: 899,
     color: "var(--tier-1)",
     blurb: "Everyone starts here. Log a match and you're on the ladder.",
   },
@@ -28,8 +36,8 @@ export const TIERS: Tier[] = [
     level: 2,
     name: "Rally Regular",
     short: "Regular",
-    min: 1000,
-    max: 1199,
+    min: 900,
+    max: 1049,
     color: "var(--tier-2)",
     blurb: "You show up and you keep the ball on the table.",
   },
@@ -37,8 +45,8 @@ export const TIERS: Tier[] = [
     level: 3,
     name: "Spin Doctor",
     short: "Spin",
-    min: 1200,
-    max: 1399,
+    min: 1050,
+    max: 1199,
     color: "var(--tier-3)",
     blurb: "Serves that curve and opponents who guess wrong.",
   },
@@ -46,8 +54,8 @@ export const TIERS: Tier[] = [
     level: 4,
     name: "Smash Specialist",
     short: "Smash",
-    min: 1400,
-    max: 1599,
+    min: 1200,
+    max: 1349,
     color: "var(--tier-4)",
     blurb: "Anything short gets put away. Loudly.",
   },
@@ -55,8 +63,8 @@ export const TIERS: Tier[] = [
     level: 5,
     name: "Paddle Master",
     short: "Master",
-    min: 1600,
-    max: 1799,
+    min: 1350,
+    max: 1524,
     color: "var(--tier-5)",
     blurb: "Top of the club. You're who people want to beat.",
   },
@@ -64,7 +72,7 @@ export const TIERS: Tier[] = [
     level: 6,
     name: "Husky Grandmaster",
     short: "Grandmaster",
-    min: 1800,
+    min: 1525,
     max: Infinity,
     color: "var(--tier-6)",
     blurb: "Rarefied air. Bring a towel and a second paddle.",

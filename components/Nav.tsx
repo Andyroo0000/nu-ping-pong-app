@@ -19,6 +19,7 @@ export async function Nav() {
         <NavLink href="/matchmaking" badge={openChallenges}>
           Matchmaking
         </NavLink>
+        <NavLink href="/live">Playing now</NavLink>
         <NavLink href="/members">Club</NavLink>
         <NavLink href="/feedback">Suggest</NavLink>
         <NavLink href="/chats" badge={unread}>
