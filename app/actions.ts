@@ -668,6 +668,61 @@ export async function startLiveDoubles(formData: FormData): Promise<ActionResult
   redirect(`/live/${liveId}`);
 }
 
+/**
+ * Join the doubles queue for a hall — and form the match if this makes four.
+ *
+ * Unlike singles, searching can't pair you on its own: doubles needs four, so
+ * three of the four calls end with you listed and waiting. The fourth one
+ * forms teams for everybody.
+ */
+export async function findDoublesInHall(formData: FormData): Promise<ActionResult> {
+  const hall = readHall(formData);
+  if (!hall) return { ok: false, error: "Pick which hall you're playing in first." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("find_doubles_in_hall", { p_hall: hall });
+  if (error) return { ok: false, error: error.message };
+
+  const result = Array.isArray(data) ? data[0] : data;
+  revalidatePath("/doubles");
+  revalidatePath("/chats");
+
+  if (!result?.matched) {
+    const params = new URLSearchParams({
+      hall,
+      searched: "1",
+      waiting: String(result?.waiting ?? 1),
+    });
+    redirect(`/doubles?${params}`);
+  }
+
+  const others = [result.partner, result.opponent_1, result.opponent_2].filter(
+    Boolean
+  ) as string[];
+  const me = await currentPlayerName(supabase);
+  await Promise.all(
+    others.map((id) =>
+      notify(id, "challenge", {
+        title: "Doubles is on",
+        body: `${me} completed a four at ${hall}. Teams are picked — come and play.`,
+        url: result.channel_id ? `/chats/${result.channel_id}` : "/doubles",
+        tag: "live",
+      })
+    )
+  );
+
+  // Straight to the doubles page with the four already filled in, so the only
+  // thing left is to start the scoreboard.
+  const params = new URLSearchParams({
+    partner: result.partner ?? "",
+    opp1: result.opponent_1 ?? "",
+    opp2: result.opponent_2 ?? "",
+    matched: "1",
+  });
+  if (result.channel_id) params.set("channel", result.channel_id);
+  redirect(`/doubles?${params}`);
+}
+
 export async function reportDoublesMatch(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   const {

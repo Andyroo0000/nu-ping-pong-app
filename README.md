@@ -50,8 +50,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      doubles, on its own separate ladder.
    - [`supabase/migrations/0017_result_integrity.sql`](supabase/migrations/0017_result_integrity.sql) —
      closes two ways to give yourself rating with a hand-made REST call.
+   - [`supabase/migrations/0018_doubles_matchmaking.sql`](supabase/migrations/0018_doubles_matchmaking.sql) —
+     a doubles queue, balanced teams, and doubles match history.
 
-   0002 through 0017 are additive: safe to run on a database that already has
+   0002 through 0018 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -74,7 +76,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0012 placements', to_regproc('public.elo_k') is not null
    union all select '0015 point margin', to_regproc('public.match_point_share') is not null
    union all select '0016 doubles', to_regclass('public.doubles_matches') is not null
-   union all select '0017 result integrity', to_regproc('public.games_won_from') is not null;
+   union all select '0017 result integrity', to_regproc('public.games_won_from') is not null
+   union all select '0018 doubles matchmaking', to_regproc('public.find_doubles_in_hall') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -294,6 +297,20 @@ any `@northeastern.edu` email and a password.
     side A against side B, to 11, win by two — so `live_point` and `live_undo`
     needed no changes at all. One scoreboard, one set of rules, nothing to
     drift.
+
+  **Matchmaking** (migration 0018) is a gathering problem rather than a
+  pairing one: you join a doubles queue for your hall *alone*, and the fourth
+  person to join triggers the match for everyone. Queueing as a pre-arranged
+  pair would defeat the point — if you already have a partner you don't need
+  matchmaking, you use the form. Teams are then balanced rather than random:
+  the four are sorted by doubles rating and split 1st+4th against 2nd+3rd,
+  which is the closest split available from four people.
+
+  `queue_entries` holds one row per player, so a player is either looking for
+  singles or for doubles — which is the behaviour you want, and why `mode`
+  lives on the queue row. It does mean `find_match_in_hall` and
+  `pair_with_player` had to start filtering on it, or singles matchmaking
+  would pair you with someone waiting for doubles.
 
   Expected score comes from each team's **average** rating, and each player
   moves on their own K, so the four deltas differ and all four are stored.

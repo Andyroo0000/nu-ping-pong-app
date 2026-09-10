@@ -62,6 +62,7 @@ async function ProfileBody({ params }: { params: Params }) {
     { data: casual },
     { data: blockRow },
     { count: doublesRank },
+    { data: doublesMatches },
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -103,6 +104,7 @@ async function ProfileBody({ params }: { params: Params }) {
         .from("profiles")
         .select("id", { count: "exact", head: true })
         .gt("doubles_rating", profile.doubles_rating),
+      supabase.rpc("doubles_history", { p_player: profile.id, p_limit: 10 }),
     ]);
 
   const doublesTotal = profile.doubles_wins + profile.doubles_losses;
@@ -251,6 +253,50 @@ async function ProfileBody({ params }: { params: Params }) {
             <p className="mt-2 text-xs text-text-faint">
               Everyone starts at 1,000 here too. Doubles results never move a singles rating.
             </p>
+          )}
+
+          {doublesMatches && doublesMatches.length > 0 && (
+            <div className="mt-4 border-t border-border pt-3">
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-text-faint">
+                Recent doubles
+              </div>
+              <div className="flex flex-col">
+                {doublesMatches.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-3 border-b border-border py-2.5 last:border-0"
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-bg ${
+                        m.won ? "bg-live" : "bg-ink"
+                      }`}
+                    >
+                      {m.won ? "W" : "L"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {/* Whose side of the table this was is the thing that
+                          makes a doubles row readable, so the partner leads. */}
+                      <div className="truncate text-[13px] font-bold">
+                        with {m.partner_name}
+                      </div>
+                      <div className="truncate text-xs text-text-faint">
+                        v {m.opponent_1_name} &amp; {m.opponent_2_name}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-display text-sm font-bold tabular-nums">
+                        {m.games_won_mine}–{m.games_won_theirs}
+                      </div>
+                      <div className="text-[11px] font-semibold text-text-faint">
+                        {m.is_ranked && m.my_delta != null
+                          ? `${m.my_delta > 0 ? "+" : ""}${m.my_delta}`
+                          : "casual"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

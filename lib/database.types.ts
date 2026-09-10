@@ -12,6 +12,7 @@ export type PlayStyle = "quick" | "long";
 export type PlayPreference = "casual" | "competitive" | "both";
 export type DoublesTeam = "a" | "b";
 export type RatingMode = "singles" | "doubles";
+export type QueueMode = "singles" | "doubles";
 
 export interface Database {
   public: {
@@ -463,6 +464,7 @@ export interface Database {
           location: string | null;
           note: string | null;
           play_style: PlayStyle;
+          mode: QueueMode;
           joined_at: string;
           expires_at: string;
         };
@@ -471,6 +473,7 @@ export interface Database {
           location?: string | null;
           note?: string | null;
           play_style?: PlayStyle;
+          mode?: QueueMode;
           joined_at?: string;
           expires_at?: string;
         };
@@ -494,6 +497,7 @@ export interface Database {
           location: string | null;
           note: string | null;
           play_style: PlayStyle;
+          mode: QueueMode;
           joined_at: string;
           expires_at: string;
         };
@@ -604,16 +608,49 @@ export interface Database {
         Returns: { wins: number; losses: number }[];
       };
       queue_elsewhere: {
-        Args: { p_hall?: string | null };
+        Args: { p_hall?: string | null; p_mode?: QueueMode | null };
         Returns: {
           user_id: string;
           username: string;
           full_name: string | null;
           rating: number;
+          doubles_rating: number;
           location: string | null;
           note: string | null;
           play_style: PlayStyle;
+          mode: QueueMode;
           joined_at: string;
+        }[];
+      };
+      find_doubles_in_hall: {
+        Args: { p_hall: string };
+        Returns: {
+          matched: boolean;
+          waiting: number;
+          channel_id: string | null;
+          partner: string | null;
+          opponent_1: string | null;
+          opponent_2: string | null;
+        }[];
+      };
+      doubles_waiting: {
+        Args: { p_hall?: string | null };
+        Returns: { location: string; waiting: number }[];
+      };
+      doubles_history: {
+        Args: { p_player: string; p_limit?: number };
+        Returns: {
+          id: string;
+          confirmed_at: string | null;
+          won: boolean;
+          is_ranked: boolean;
+          games_won_mine: number;
+          games_won_theirs: number;
+          my_delta: number | null;
+          partner_name: string;
+          partner_username: string;
+          opponent_1_name: string;
+          opponent_2_name: string;
         }[];
       };
       nav_summary: {

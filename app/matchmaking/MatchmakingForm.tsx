@@ -2,12 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { HALL_GROUPS, OTHER_HALL, PLAY_STYLES } from "@/lib/halls";
+import { PLAY_STYLES } from "@/lib/halls";
+import { HallSelect } from "@/components/HallSelect";
 import { findMatchInHall } from "@/app/actions";
 import type { ActionResult } from "@/app/actions";
-
-const FIELD =
-  "w-full rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-ink";
 
 /**
  * One button that opens the two questions matchmaking actually needs — which
@@ -83,49 +81,5 @@ function SearchButton({ label }: { label: string }) {
     >
       {pending ? "Looking for someone…" : label}
     </button>
-  );
-}
-
-function HallSelect({ defaultValue }: { defaultValue?: string | null }) {
-  const known = Boolean(defaultValue) && HALL_GROUPS.some((g) => g.halls.includes(defaultValue!));
-  const [choice, setChoice] = useState(
-    defaultValue ? (known ? defaultValue : OTHER_HALL) : ""
-  );
-
-  return (
-    <>
-      <select
-        name="hall"
-        required
-        value={choice}
-        onChange={(e) => setChoice(e.target.value)}
-        aria-label="Which hall are you playing in?"
-        className={FIELD}
-      >
-        <option value="">Which hall are you in?</option>
-        {HALL_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.halls.map((hall) => (
-              <option key={hall} value={hall}>
-                {hall}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-        <option value={OTHER_HALL}>Somewhere else…</option>
-      </select>
-
-      {choice === OTHER_HALL && (
-        <input
-          name="otherHall"
-          defaultValue={known ? "" : (defaultValue ?? "")}
-          maxLength={120}
-          required
-          placeholder="Where? e.g. rec center, 3rd floor lounge"
-          aria-label="Other location"
-          className={FIELD}
-        />
-      )}
-    </>
   );
 }

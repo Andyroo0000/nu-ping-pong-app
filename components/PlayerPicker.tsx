@@ -18,7 +18,8 @@ export type PickedPlayer = {
   avatar_path: string | null;
 };
 
-const COLUMNS =
+/** Exported so a caller preselecting a player fetches the same shape. */
+export const PICKER_COLUMNS =
   "id, username, full_name, rating, wins, losses, doubles_rating, doubles_wins, doubles_losses, avatar_path";
 
 /**
@@ -60,7 +61,7 @@ export function PlayerPicker({
       }
       const { data } = await supabase
         .from("profiles")
-        .select(COLUMNS)
+        .select(PICKER_COLUMNS)
         .or(`full_name.ilike.%${term}%,username.ilike.%${term}%`)
         .limit(6);
       setResults(data ?? []);

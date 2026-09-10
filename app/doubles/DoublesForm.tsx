@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { PlayerPicker, type PickedPlayer } from "@/components/PlayerPicker";
+import { PlayerPicker, type PickedPlayer, PICKER_COLUMNS } from "@/components/PlayerPicker";
 import { TierBadge } from "@/components/TierBadge";
 import { doublesRatingChange, doublesRatingNote, teamRating } from "@/lib/elo";
 import { firstName } from "@/lib/names";
@@ -25,7 +26,13 @@ type Me = {
 export function DoublesForm() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  // Set when matchmaking just formed a four, so the page can say so and link
+  // to the group chat.
+  const matched = searchParams.get("matched") === "1";
+  const channelId = searchParams.get("channel");
 
   const [me, setMe] = useState<Me | null>(null);
   const [partner, setPartner] = useState<PickedPlayer | null>(null);
@@ -61,6 +68,25 @@ export function DoublesForm() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Matchmaking hands over three ids, so the four are already decided by the
+  // time you land here — one query, then the only thing left is to play.
+  useEffect(() => {
+    const ids = ["partner", "opp1", "opp2"].map((k) => searchParams.get(k));
+    if (ids.some((id) => !id)) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select(PICKER_COLUMNS)
+        .in("id", ids as string[]);
+      if (!data) return;
+      const find = (id: string | null) => data.find((p) => p.id === id) ?? null;
+      setPartner(find(ids[0]));
+      setOpp1(find(ids[1]));
+      setOpp2(find(ids[2]));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const chosen = [me?.id, partner?.id, opp1?.id, opp2?.id].filter(Boolean) as string[];
   const ready = !!(partner && opp1 && opp2);
@@ -155,6 +181,24 @@ export function DoublesForm() {
 
   return (
     <div className="mx-auto max-w-md px-6 pb-10">
+      {matched && (
+        <div className="mt-5 rounded-2xl border-2 border-nu bg-nu-wash p-4">
+          <div className="text-sm font-bold">You&rsquo;ve got a four</div>
+          <p className="mt-1 text-[13px] leading-relaxed text-text-dim">
+            Teams are picked and filled in below — strongest with weakest, so the game stays
+            close. Start the scoreboard when you get to a table.
+          </p>
+          {channelId && (
+            <Link
+              href={`/chats/${channelId}`}
+              className="mt-3 block rounded-xl border border-border-strong bg-bg py-2.5 text-center text-[13px] font-bold"
+            >
+              Open the group chat
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="panel mt-5 rounded-2xl p-4">
         <div className="text-sm font-bold">Your side</div>
         <div className="mt-3 flex flex-col gap-3">
