@@ -399,9 +399,16 @@ Review them in the Supabase dashboard — `select * from reports where status =
 'open'` — which uses the service role and bypasses RLS. There's no admin UI;
 for a club this size a SQL query is the honest answer.
 
-**Chatting without a challenge**: `open_direct_channel()` reuses the existing
-two-person channel if there is one, so saying hello twice doesn't scatter the
-history across two threads.
+**One chat per pair.** Every path that opens a chat — accepting a challenge,
+a hall pairing, "Join", or the Chat button — goes through `channel_between()`
+and reuses the pair's existing thread. `open_match_channel` originally always
+created a new one, so playing someone three times gave you three chats each
+holding a fragment of the conversation. Reuse still posts a system line on a
+new match, because accepting a challenge has to visibly do something.
+
+`channel_between()` requires the channel to have **exactly two members**, not
+just to contain both players — otherwise a future group channel containing the
+pair would match and their private messages would land in it.
 
 ### Security model
 
