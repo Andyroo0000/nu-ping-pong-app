@@ -12,7 +12,8 @@ type Step = {
 };
 
 /**
- * Four cards, shown once, the first time someone lands on the home page.
+ * Four cards, shown the first time someone lands on the home page, and again
+ * whenever they tap How to play.
  *
  * Kept to four on purpose: nobody reads a tour. These cover the things that
  * are genuinely non-obvious — that a result needs the other player to confirm
@@ -23,7 +24,7 @@ const STEPS: Step[] = [
   {
     title: "Everyone starts at 1,000",
     body: "Win and it goes up, lose and it goes down. Beating someone well above you is worth a lot; beating someone well below is worth almost nothing.",
-    aside: "Six tiers to climb, from Rookie Husky to Husky Grandmaster.",
+    aside: "Six ranks to climb, from Bronze up to Master.",
   },
   {
     title: "Say which hall you're in",
@@ -41,13 +42,25 @@ const STEPS: Step[] = [
   },
 ];
 
-export function Welcome() {
+/**
+ * `onClose` marks this as a re-read rather than a first run: the parent owns
+ * whether it's open, and dismissing doesn't touch onboarded_at — someone who
+ * opens the rules for the third time hasn't just been onboarded again.
+ *
+ * Without it, this is the first run. It closes itself, because the only thing
+ * rendering it then is a server component that can't hand down a callback.
+ */
+export function Welcome({ onClose }: { onClose?: () => void }) {
   const [index, setIndex] = useState(0);
   const [closing, setClosing] = useState(false);
   const step = STEPS[index];
   const last = index === STEPS.length - 1;
 
   async function finish() {
+    if (onClose) {
+      onClose();
+      return;
+    }
     setClosing(true);
     // Fire and forget: the walkthrough should close the instant it's tapped,
     // and re-showing it once if the write fails is a trivial cost.
@@ -62,9 +75,20 @@ export function Welcome() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-title"
+      onKeyDown={onClose ? (e) => e.key === "Escape" && onClose() : undefined}
     >
       <div className="pb-safe w-full max-w-sm overflow-hidden rounded-3xl border border-border-strong bg-bg">
-        <div className="page-header px-6 pb-6 pt-7">
+        <div className="page-header relative px-6 pb-6 pt-7">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold leading-none text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              &times;
+            </button>
+          )}
           <NMark size={40} />
           <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-white/50">
             Step {index + 1} of {STEPS.length}
@@ -110,7 +134,7 @@ export function Welcome() {
                   onClick={finish}
                   className="rounded-xl border border-border-strong px-4 py-3.5 text-[13px] font-bold text-text-dim"
                 >
-                  Skip
+                  {onClose ? "Close" : "Skip"}
                 </button>
                 <button
                   type="button"

@@ -51,13 +51,15 @@
   /* Online-now indicator. Green reads as "available" everywhere. */
   --live: #16a34a;
 
-  /* Tier accents: grey → bronze → steel → gold → NU red → black. */
-  --tier-1: #78716c;
-  --tier-2: #a9611f;
-  --tier-3: #6b7f95;
-  --tier-4: #b8891b;
-  --tier-5: var(--nu-red);
-  --tier-6: #17151c;
+  /* Bronze → Silver → Gold → Platinum → Diamond → Master. Master takes
+     Northeastern red so the ladder still ends somewhere that belongs to this
+     club, and because red on the top badge is the payoff for climbing. */
+  --tier-1: #a4661f;  /* bronze */
+  --tier-2: #7d8794;  /* silver */
+  --tier-3: #b8891b;  /* gold */
+  --tier-4: #4f8f92;  /* platinum */
+  --tier-5: #2f7fc4;  /* diamond */
+  --tier-6: var(--nu-red);
 
   --card-shadow: 0 10px 30px -12px oklch(45% 0.2 25 / 0.4);
 }
@@ -91,12 +93,13 @@
 
   --live: #4ade80;
 
-  --tier-1: #a8a29e;
-  --tier-2: #dd9c4f;
-  --tier-3: #a6bcd4;
-  --tier-4: #e5c05c;
-  --tier-5: #ff7286;
-  --tier-6: #f2f0f7;
+  /* Lightened so every tier stays legible on a dark page. */
+  --tier-1: #d18f4a;  /* bronze */
+  --tier-2: #b3bdcb;  /* silver */
+  --tier-3: #e5c05c;  /* gold */
+  --tier-4: #78c4c7;  /* platinum */
+  --tier-5: #6cb6f0;  /* diamond */
+  --tier-6: #ff7286;  /* master */
 
   --card-shadow: 0 10px 30px -12px oklch(60% 0.2 25 / 0.35);
 }

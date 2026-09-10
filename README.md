@@ -202,9 +202,8 @@ any `@northeastern.edu` email and a password.
   win. **Tier width is the lever.** From a 1000 start against an improving
   field it's now roughly 2 wins to the first promotion, 7 to the next, then 14
   and 32.
-- **Tiers** (`lib/tiers.ts`) — Rookie Husky → Rally Regular → Spin Doctor →
-  Smash Specialist → Paddle Master → Husky Grandmaster, a cosmetic label
-  derived from rating.
+- **Ranks** (`lib/tiers.ts`) — Bronze → Silver → Gold → Platinum → Diamond →
+  Master, a cosmetic label derived from rating.
 - **Matchmaking** (`app/matchmaking`) — one **Matchmaking** button that asks
   two questions: which hall you're in, and Quick play (one match) or Long play
   (sticking around). Then `find_match_in_hall`:
@@ -240,7 +239,10 @@ any `@northeastern.edu` email and a password.
   seen — on the profile rather than in localStorage, so someone who signed up
   on a laptop isn't walked through it again on their phone. Migration 0011
   backfills existing players so nobody gets ambushed with a tour of features
-  they've been using for weeks.
+  they've been using for weeks. **How to play** on the home page
+  ([`components/HowToPlay.tsx`](components/HowToPlay.tsx)) re-opens the same
+  four cards on demand — one copy of the rules to keep correct instead of a
+  separate rules page, and dismissing it doesn't touch `onboarded_at`.
 - **Playing now** (`app/live`) — every match being scored right now, with the
   point scores updating live. Only the score on each row is a Client
   Component, so a page full of live matches costs one small subscription per
@@ -361,10 +363,11 @@ proportions are what say "paddle".
 
 **Rank badges** ([`components/TierBadge.tsx`](components/TierBadge.tsx)) give
 each of the six tiers its own accent, a paddle in that colour, and one pip per
-level, so tiers are told apart at a glance and climbing one looks like
-something. The ramp runs grey → bronze → steel → gold → **NU red** → black;
-the jump to red at Paddle Master is the point, since the top two tiers wear the
-school colour. `TierBadge` takes `sm`/`md`/`lg` and a `short` flag for tight
+level, so ranks are told apart at a glance and climbing one looks like
+something. The ramp is the familiar bronze → silver → gold → platinum →
+diamond, and then **NU red** at Master: the jump out of the standard palette
+is the point, since the top rank wears the school colour rather than one more
+gemstone. `TierBadge` takes `sm`/`md`/`lg` and a `short` flag for tight
 rows, `TierProgress` adds a meter toward the next tier, and `TierDot` is
 icon-only. Tier names, ranges, colours and blurbs are all in
 [`lib/tiers.ts`](lib/tiers.ts).

@@ -12,66 +12,68 @@ export interface Tier {
   blurb: string;
 }
 
-// Grey → bronze → steel → gold → Northeastern red → black. The jump to red at
-// Paddle Master is the point: the top two tiers wear the school colour.
+// Standard ladder ranks. The top one keeps Northeastern red, so the ladder
+// still ends somewhere that belongs to this club rather than to every ranked
+// game ever made.
 //
-// The boundaries are fitted to the rating range a small club actually occupies,
-// not to round numbers. They were originally 200 points apart starting at 1000,
-// which made the top half of the ladder unreachable: modelling a 1000-rated
-// player showed 74 wins to reach 1400 and *never* to 1600, because you cannot
-// rate 1600 by beating 1000s — Elo is relative. Narrower early bands give a
-// promotion after about two wins and the next after seven, then it stretches
-// out, so climbing stays quick at the bottom and means something at the top.
+// The boundaries are fitted to the rating range a small club actually
+// occupies, not to round numbers. They were originally 200 points apart
+// starting at 1000, which made the top half of the ladder unreachable:
+// modelling a 1000-rated player showed 74 wins to reach 1400 and *never* to
+// 1600, because you cannot rate 1600 by beating 1000s — Elo is relative.
+// Narrower early bands give a promotion after about two wins and the next
+// after seven, then it stretches out, so climbing stays quick at the bottom
+// and means something at the top.
 export const TIERS: Tier[] = [
   {
     level: 1,
-    name: "Rookie Husky",
-    short: "Rookie",
+    name: "Bronze",
+    short: "Bronze",
     min: 0,
     max: 899,
     color: "var(--tier-1)",
-    blurb: "Everyone starts here. Log a match and you're on the ladder.",
+    blurb: "Everyone starts above this. Drop here and there's only one way to go.",
   },
   {
     level: 2,
-    name: "Rally Regular",
-    short: "Regular",
+    name: "Silver",
+    short: "Silver",
     min: 900,
     max: 1049,
     color: "var(--tier-2)",
-    blurb: "You show up and you keep the ball on the table.",
+    blurb: "Where you begin. Win a couple and you're already climbing.",
   },
   {
     level: 3,
-    name: "Spin Doctor",
-    short: "Spin",
+    name: "Gold",
+    short: "Gold",
     min: 1050,
     max: 1199,
     color: "var(--tier-3)",
-    blurb: "Serves that curve and opponents who guess wrong.",
+    blurb: "You keep the ball on the table and you punish a loose serve.",
   },
   {
     level: 4,
-    name: "Smash Specialist",
-    short: "Smash",
+    name: "Platinum",
+    short: "Plat",
     min: 1200,
     max: 1349,
     color: "var(--tier-4)",
-    blurb: "Anything short gets put away. Loudly.",
+    blurb: "Spin you can read and spin you can hide. Anything short gets put away.",
   },
   {
     level: 5,
-    name: "Paddle Master",
-    short: "Master",
+    name: "Diamond",
+    short: "Diamond",
     min: 1350,
     max: 1524,
     color: "var(--tier-5)",
-    blurb: "Top of the club. You're who people want to beat.",
+    blurb: "Top of the club. You're who everyone wants a game against.",
   },
   {
     level: 6,
-    name: "Husky Grandmaster",
-    short: "Grandmaster",
+    name: "Master",
+    short: "Master",
     min: 1525,
     max: Infinity,
     color: "var(--tier-6)",

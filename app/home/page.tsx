@@ -15,6 +15,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { ProfileNudge } from "@/components/ProfileNudge";
 import { LiveNow } from "@/components/LiveNow";
 import { WelcomeGate } from "@/components/WelcomeGate";
+import { HowToPlay } from "@/components/HowToPlay";
 import { OnlineAvatarWrapper, OnlineCount } from "@/components/OnlineDot";
 import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { CardSkeleton, NavSkeleton, RowsSkeleton } from "@/components/Skeletons";
@@ -84,12 +85,15 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <Link
-          href="/feedback"
-          className="mt-2.5 block rounded-xl border border-border py-3 text-center text-[13px] font-bold text-text-dim"
-        >
-          Suggest something
-        </Link>
+        <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+          <HowToPlay className="rounded-xl border border-border py-3 text-center text-[13px] font-bold text-text-dim" />
+          <Link
+            href="/feedback"
+            className="rounded-xl border border-border py-3 text-center text-[13px] font-bold text-text-dim"
+          >
+            Suggest something
+          </Link>
+        </div>
       </div>
 
       <Suspense fallback={null}>

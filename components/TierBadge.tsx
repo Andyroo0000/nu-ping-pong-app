@@ -83,7 +83,7 @@ export function TierProgress({ rating, className = "" }: { rating: number; class
               <span style={{ color: next.tier.color }}>{next.tier.short}</span>
             </>
           ) : (
-            "Top tier"
+            "Top rank"
           )}
         </div>
       </div>

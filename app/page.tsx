@@ -144,7 +144,7 @@ export default function LandingPage() {
               },
               {
                 title: "Climb the ladder",
-                body: "Chase the next tier, find opponents near your rating, and see how you stack up club-wide.",
+                body: "Chase the next rank, find opponents near your rating, and see how you stack up club-wide.",
               },
             ].map((step) => (
               <div key={step.title} className="flex flex-col gap-4">
@@ -165,10 +165,10 @@ export default function LandingPage() {
       <div className="px-6 py-20 sm:px-16">
         <div className="mx-auto max-w-6xl">
           <h2 className="font-display text-3xl font-bold tracking-tight">
-            Six tiers. One ladder.
+            Six ranks. One ladder.
           </h2>
           <p className="mt-3 max-w-lg text-text-dim">
-            Every ranked match moves your rating — and every tier is a milestone
+            Every ranked match moves your rating — and every rank is a milestone
             worth bragging about. Play casually instead and your rating stays
             put.
           </p>
