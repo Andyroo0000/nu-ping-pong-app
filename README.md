@@ -52,8 +52,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      closes two ways to give yourself rating with a hand-made REST call.
    - [`supabase/migrations/0018_doubles_matchmaking.sql`](supabase/migrations/0018_doubles_matchmaking.sql) —
      a doubles queue, balanced teams, and doubles match history.
+   - [`supabase/migrations/0019_delete_player.sql`](supabase/migrations/0019_delete_player.sql) —
+     removing a player, either way round.
 
-   0002 through 0018 are additive: safe to run on a database that already has
+   0002 through 0019 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -77,7 +79,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0015 point margin', to_regproc('public.match_point_share') is not null
    union all select '0016 doubles', to_regclass('public.doubles_matches') is not null
    union all select '0017 result integrity', to_regproc('public.games_won_from') is not null
-   union all select '0018 doubles matchmaking', to_regproc('public.find_doubles_in_hall') is not null;
+   union all select '0018 doubles matchmaking', to_regproc('public.find_doubles_in_hall') is not null
+   union all select '0019 delete player', to_regproc('public.delete_player') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -267,6 +270,31 @@ any `@northeastern.edu` email and a password.
   ([`components/HowToPlay.tsx`](components/HowToPlay.tsx)) re-opens the same
   four cards on demand — one copy of the rules to keep correct instead of a
   separate rules page, and dismissing it doesn't touch `onboarded_at`.
+- **Removing a player** (migration 0019) — "Delete user" in the Supabase
+  dashboard fails with "Database error deleting user" because
+  `profiles.id` cascades from `auth.users` and ten foreign keys with no
+  on-delete rule refuse: four in `matches`, five in `doubles_matches`, and
+  `rating_history.player_id`. Behind them, `rating_history.match_id` has no
+  rule either, so the matches can't go until the history rows do.
+
+  Making everything cascade would erase results from other people's history
+  the moment anyone was deleted, so there are two explicit functions instead:
+
+  - `delete_player(id)` for test accounts and duplicates. It removes the
+    player and their results, and **puts every opponent's rating back** —
+    exactly, not approximately, because each confirmed match stores the
+    rating change it caused (`rating_delta` / `rating_delta_loser`, and all
+    four deltas for doubles). Matches confirmed before 0012 have no
+    `rating_delta_loser`; back then both sides moved by the same amount, so
+    `rating_delta` is the correct fallback.
+  - `anonymise_player(id)` for a real person who leaves. Name, bio, hall and
+    photo go; results stay as "Former player", so nobody else's history
+    develops holes and no rating has to move. This is usually the right one.
+
+  Both are **owner-only** — Postgres grants EXECUTE to PUBLIC by default, and
+  a security-definer function that deletes any player by id would be the worst
+  hole in the schema, so both are revoked. They run in the SQL editor and
+  nowhere else.
 - **Result integrity** (migration 0017) — a reported result is constrained at
   the database level, not just in the form. The reporter must be `player_a`,
   and the winner and game counts must agree with the scores. Both were
