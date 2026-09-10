@@ -54,8 +54,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      a doubles queue, balanced teams, and doubles match history.
    - [`supabase/migrations/0019_delete_player.sql`](supabase/migrations/0019_delete_player.sql) —
      removing a player, either way round.
+   - [`supabase/migrations/0020_delete_via_dashboard.sql`](supabase/migrations/0020_delete_via_dashboard.sql) —
+     makes the dashboard's own Delete user button work.
 
-   0002 through 0019 are additive: safe to run on a database that already has
+   0002 through 0020 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -80,7 +82,9 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0016 doubles', to_regclass('public.doubles_matches') is not null
    union all select '0017 result integrity', to_regproc('public.games_won_from') is not null
    union all select '0018 doubles matchmaking', to_regproc('public.find_doubles_in_hall') is not null
-   union all select '0019 delete player', to_regproc('public.delete_player') is not null;
+   union all select '0019 delete player', to_regproc('public.delete_player') is not null
+   union all select '0020 delete via dashboard',
+     exists (select 1 from pg_trigger where tgname = 'profiles_cleanup_before_delete');
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -295,6 +299,15 @@ any `@northeastern.edu` email and a password.
   a security-definer function that deletes any player by id would be the worst
   hole in the schema, so both are revoked. They run in the SQL editor and
   nowhere else.
+
+  Migration 0020 then moves the cleanup onto the profile row as a BEFORE
+  DELETE trigger, so it runs whichever way the deletion arrives — the
+  dashboard's Delete user button, `delete_player()`, or a plain
+  `delete from public.profiles`. All three now work and do the same thing.
+  The trigger function is SECURITY DEFINER because the dashboard delete
+  arrives as `supabase_auth_admin`, which has no business writing to
+  `public.matches`; as an ordinary trigger the cleanup would fail on
+  permissions, which is the original error wearing a different hat.
 - **Result integrity** (migration 0017) — a reported result is constrained at
   the database level, not just in the form. The reporter must be `player_a`,
   and the winner and game counts must agree with the scores. Both were
