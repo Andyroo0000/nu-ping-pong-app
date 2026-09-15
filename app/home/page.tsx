@@ -97,10 +97,10 @@ export default function HomePage() {
             Play doubles
           </Link>
           <Link
-            href="/leaderboard?mode=doubles"
+            href="/tournaments"
             className="rounded-xl border border-border-strong py-3.5 text-center text-sm font-bold"
           >
-            Doubles ladder
+            Tournaments
           </Link>
         </div>
 

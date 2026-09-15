@@ -13,6 +13,9 @@ export type PlayPreference = "casual" | "competitive" | "both";
 export type DoublesTeam = "a" | "b";
 export type RatingMode = "singles" | "doubles";
 export type QueueMode = "singles" | "doubles";
+export type TournamentStatus = "setup" | "running" | "complete";
+export type TournamentMode = "singles" | "doubles";
+export type BracketSideDb = "main" | "losers" | "final";
 
 export interface Database {
   public: {
@@ -364,6 +367,66 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["live_matches"]["Insert"]>;
         Relationships: [];
       };
+      tournaments: {
+        Row: {
+          id: string;
+          name: string;
+          format: "single_elim" | "double_elim" | "round_robin";
+          mode: TournamentMode;
+          is_ranked: boolean;
+          best_of: number;
+          status: TournamentStatus;
+          created_by: string;
+          champion_entry: string | null;
+          created_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      tournament_entries: {
+        Row: {
+          id: string;
+          tournament_id: string;
+          player_1: string;
+          player_2: string | null;
+          seed: number | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      tournament_matches: {
+        Row: {
+          id: string;
+          tournament_id: string;
+          key: string;
+          bracket: BracketSideDb;
+          round: number;
+          slot: number;
+          entry_a: string | null;
+          entry_b: string | null;
+          winner_to_key: string | null;
+          winner_to_slot: "a" | "b" | null;
+          loser_to_key: string | null;
+          loser_to_slot: "a" | "b" | null;
+          games: MatchGame[] | null;
+          games_won_a: number | null;
+          games_won_b: number | null;
+          winner_entry: string | null;
+          status: "pending" | "done";
+          match_id: string | null;
+          doubles_match_id: string | null;
+          reported_by: string | null;
+          reported_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       doubles_matches: {
         Row: {
           id: string;
@@ -600,6 +663,48 @@ export interface Database {
       match_point_share: {
         Args: { p_games: MatchGame[]; p_for_a: boolean };
         Returns: number | null;
+      };
+      create_tournament: {
+        Args: {
+          p_name: string;
+          p_format: string;
+          p_mode?: TournamentMode;
+          p_is_ranked?: boolean;
+          p_best_of?: number;
+        };
+        Returns: string;
+      };
+      add_tournament_entry: {
+        Args: { p_tournament: string; p_player_1: string; p_player_2?: string | null };
+        Returns: string;
+      };
+      remove_tournament_entry: { Args: { p_entry: string }; Returns: undefined };
+      start_tournament: {
+        Args: { p_tournament: string; p_matches: unknown; p_seeds: string[] };
+        Returns: number;
+      };
+      report_tournament_match: {
+        Args: { p_match: string; p_games: MatchGame[] };
+        Returns: { winner_entry: string | null; needs_confirmation: boolean };
+      };
+      advance_tournament_match: {
+        Args: { p_match: string; p_winner_entry: string };
+        Returns: undefined;
+      };
+      delete_tournament: { Args: { p_tournament: string }; Returns: undefined };
+      is_organiser: { Args: { p_tournament: string }; Returns: boolean };
+      tournament_standings: {
+        Args: { p_tournament: string };
+        Returns: {
+          entry_id: string;
+          played: number;
+          won: number;
+          lost: number;
+          games_for: number;
+          games_against: number;
+          points_for: number;
+          points_against: number;
+        }[];
       };
       is_blocked_pair: { Args: { p_a: string; p_b: string }; Returns: boolean };
       blocked_ids: { Args: Record<string, never>; Returns: string[] };

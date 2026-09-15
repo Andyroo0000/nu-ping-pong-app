@@ -56,8 +56,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      removing a player, either way round.
    - [`supabase/migrations/0020_delete_via_dashboard.sql`](supabase/migrations/0020_delete_via_dashboard.sql) —
      makes the dashboard's own Delete user button work.
+   - [`supabase/migrations/0021_tournaments.sql`](supabase/migrations/0021_tournaments.sql) —
+     tournaments: brackets, entries and results.
 
-   0002 through 0020 are additive: safe to run on a database that already has
+   0002 through 0021 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -84,7 +86,8 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
    union all select '0018 doubles matchmaking', to_regproc('public.find_doubles_in_hall') is not null
    union all select '0019 delete player', to_regproc('public.delete_player') is not null
    union all select '0020 delete via dashboard',
-     exists (select 1 from pg_trigger where tgname = 'profiles_cleanup_before_delete');
+     exists (select 1 from pg_trigger where tgname = 'profiles_cleanup_before_delete')
+   union all select '0021 tournaments', to_regclass('public.tournaments') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -274,6 +277,38 @@ any `@northeastern.edu` email and a password.
   ([`components/HowToPlay.tsx`](components/HowToPlay.tsx)) re-opens the same
   four cards on demand — one copy of the rules to keep correct instead of a
   separate rules page, and dismissing it doesn't touch `onboarded_at`.
+- **Tournaments** (`app/tournaments`, migration 0021, `lib/bracket.ts`) —
+  single elimination, double elimination and round robin, in singles or
+  doubles. Add the entries, pick a format, and the bracket is generated.
+
+  Three things shape the design:
+
+  - **Entries, not players.** An entry is one player or a pair, so every table
+    and function works the same for singles and doubles. The difference is
+    only in how an entry is displayed and which results table a confirmed
+    match lands in.
+  - **The bracket is a linked list.** Each match stores where its winner goes
+    (`winner_to_key` + slot) and, in double elimination, where its loser goes,
+    so advancing a result is a local write rather than re-deriving the whole
+    bracket from results. The generator lives in `lib/bracket.ts` so it can be
+    tested by *simulating* tournaments: 3,022 checks play every format out to
+    completion for 2-20 entrants and assert the match count, that nothing gets
+    stuck, that no slot is written twice, and that the top seed wins.
+  - **A ranked tournament match creates an ordinary PENDING match.** The
+    bracket advances immediately; the rating only moves once the opponent
+    confirms. Letting a tournament write confirmed results would reopen the
+    hole 0017 closed — create a tournament, add a victim, type a win. It
+    follows that only a participant can enter a score (0017 requires the
+    reporter to be `player_a`), so for a no-show the organiser uses
+    `advance_tournament_match()`, which moves the bracket with no score and no
+    rating change.
+
+  Byes are handled by collapsing any match that can only ever receive one
+  entrant, as a fixpoint over *feeders* rather than seated entrants — 17
+  entrants in a 32 bracket means 15 byes, and the losers-bracket matches
+  waiting on those non-existent losers have to be rewired, not just skipped.
+  Double elimination has no bracket reset: the losers-bracket finalist winning
+  the grand final takes the title.
 - **Removing a player** (migration 0019) — "Delete user" in the Supabase
   dashboard fails with "Database error deleting user" because
   `profiles.id` cascades from `auth.users` and ten foreign keys with no

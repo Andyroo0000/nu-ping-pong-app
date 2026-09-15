@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchGame } from "@/lib/database.types";
 import { normalizePlayStyle, OTHER_HALL } from "@/lib/halls";
+import { generateBracket } from "@/lib/bracket";
 import { AVAILABILITY_VALUES, normalizePlayPreference, YEAR_VALUES } from "@/lib/profile";
 import { notify, preview } from "@/lib/push";
 import { displayName } from "@/lib/names";
@@ -828,6 +829,220 @@ export async function declineDoublesMatch(formData: FormData) {
   const { error } = await supabase.rpc("decline_doubles_match", { p_match_id: matchId });
   if (error) throw new Error(error.message);
   revalidatePath("/home");
+}
+
+// ---------------------------------------------------------------------------
+// Tournaments
+//
+// The bracket structure is generated here rather than in the database, so it
+// can be tested by simulating tournaments (see lib/bracket.ts). Everything
+// that decides who is allowed to do what stays in SQL.
+// ---------------------------------------------------------------------------
+
+export async function createTournament(formData: FormData): Promise<ActionResult> {
+  const name = String(formData.get("name") ?? "").trim();
+  const format = String(formData.get("format") ?? "");
+  const mode = String(formData.get("mode") ?? "singles");
+  const isRanked = String(formData.get("matchKind") ?? "ranked") !== "casual";
+  const bestOf = Number(formData.get("bestOf") ?? 3);
+
+  if (!name) return { ok: false, error: "Give it a name." };
+  if (!["single_elim", "double_elim", "round_robin"].includes(format)) {
+    return { ok: false, error: "Pick a format." };
+  }
+
+  const supabase = await createClient();
+  const { data: id, error } = await supabase.rpc("create_tournament", {
+    p_name: name,
+    p_format: format,
+    p_mode: mode === "doubles" ? "doubles" : "singles",
+    p_is_ranked: isRanked,
+    p_best_of: [1, 3, 5].includes(bestOf) ? bestOf : 3,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/tournaments");
+  redirect(`/tournaments/${id}`);
+}
+
+export async function addTournamentEntry(formData: FormData): Promise<ActionResult> {
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  const player1 = String(formData.get("player1") ?? "");
+  const player2 = String(formData.get("player2") ?? "");
+
+  if (!tournamentId || !player1) return { ok: false, error: "Pick who's playing." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_tournament_entry", {
+    p_tournament: tournamentId,
+    p_player_1: player1,
+    p_player_2: player2 || null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true, message: "Entered." };
+}
+
+export async function removeTournamentEntry(formData: FormData): Promise<ActionResult> {
+  const entryId = String(formData.get("entryId") ?? "");
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!entryId) return { ok: false, error: "Missing entry." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_tournament_entry", { p_entry: entryId });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true, message: "Withdrawn." };
+}
+
+/**
+ * Generate the bracket and start the tournament.
+ *
+ * Entries are seeded strongest first, by the rating the tournament actually
+ * uses — doubles pairs by their average, which is what confirm_doubles_match
+ * predicts from too. Seeding by anything else would put the two strongest
+ * entries in the same half.
+ */
+export async function startTournament(formData: FormData): Promise<ActionResult> {
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!tournamentId) return { ok: false, error: "Missing tournament." };
+
+  const supabase = await createClient();
+  const { data: tournament } = await supabase
+    .from("tournaments")
+    .select("format, mode")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (!tournament) return { ok: false, error: "Tournament not found." };
+
+  const { data: entries } = await supabase
+    .from("tournament_entries")
+    .select("id, created_at, player_1, player_2")
+    .eq("tournament_id", tournamentId);
+
+  if (!entries || entries.length < 2) {
+    return { ok: false, error: "A tournament needs at least two entries." };
+  }
+
+  // Two queries rather than an embed: the embed needs a foreign key name in
+  // the string, and getting that wrong fails at runtime rather than here.
+  const playerIds = [
+    ...new Set(entries.flatMap((e) => [e.player_1, e.player_2].filter(Boolean) as string[])),
+  ];
+  const { data: players } = await supabase
+    .from("profiles")
+    .select("id, rating, doubles_rating")
+    .in("id", playerIds);
+  const ratingOf = new Map(
+    (players ?? []).map((p) => [
+      p.id,
+      tournament.mode === "doubles" ? p.doubles_rating : p.rating,
+    ])
+  );
+
+  const strength = (e: (typeof entries)[number]) => {
+    const one = ratingOf.get(e.player_1) ?? 1000;
+    const two = e.player_2 ? ratingOf.get(e.player_2) : null;
+    return two == null ? one : (one + two) / 2;
+  };
+
+  const seeded = [...entries]
+    .sort((a, b) => strength(b) - strength(a) || a.created_at.localeCompare(b.created_at))
+    .map((e) => e.id);
+
+  const bracket = generateBracket(
+    tournament.format as Parameters<typeof generateBracket>[0],
+    seeded
+  );
+  if (bracket.length === 0) return { ok: false, error: "Couldn't build a bracket from that field." };
+
+  const { error } = await supabase.rpc("start_tournament", {
+    p_tournament: tournamentId,
+    p_matches: bracket,
+    p_seeds: seeded,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true, message: "Bracket is live." };
+}
+
+export async function reportTournamentMatch(formData: FormData): Promise<ActionResult> {
+  const matchId = String(formData.get("matchId") ?? "");
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  let games: MatchGame[];
+  try {
+    games = JSON.parse(String(formData.get("games") ?? "[]"));
+  } catch {
+    games = [];
+  }
+
+  if (!matchId) return { ok: false, error: "Missing match." };
+  if (!Array.isArray(games) || games.length === 0) {
+    return { ok: false, error: "Enter a score for at least one game." };
+  }
+  if (
+    games.some(
+      (g) =>
+        !Number.isInteger(g?.a) ||
+        !Number.isInteger(g?.b) ||
+        g.a < 0 ||
+        g.b < 0 ||
+        g.a > 99 ||
+        g.b > 99 ||
+        g.a === g.b
+    )
+  ) {
+    return { ok: false, error: "Every game needs two whole scores, and a game can't be a tie." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("report_tournament_match", {
+    p_match: matchId,
+    p_games: games,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  revalidatePath("/home");
+  const result = data as { needs_confirmation?: boolean } | null;
+  return {
+    ok: true,
+    message: result?.needs_confirmation
+      ? "Bracket updated. Your opponent still needs to confirm it for the rating to move."
+      : "Bracket updated.",
+  };
+}
+
+export async function advanceTournamentMatch(formData: FormData): Promise<ActionResult> {
+  const matchId = String(formData.get("matchId") ?? "");
+  const winnerEntry = String(formData.get("winnerEntry") ?? "");
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!matchId || !winnerEntry) return { ok: false, error: "Pick which side goes through." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("advance_tournament_match", {
+    p_match: matchId,
+    p_winner_entry: winnerEntry,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true, message: "Advanced without a score." };
+}
+
+export async function deleteTournament(formData: FormData): Promise<ActionResult> {
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!tournamentId) return { ok: false, error: "Missing tournament." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_tournament", { p_tournament: tournamentId });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/tournaments");
+  redirect("/tournaments");
 }
 
 export async function abandonLiveMatch(formData: FormData): Promise<ActionResult> {
