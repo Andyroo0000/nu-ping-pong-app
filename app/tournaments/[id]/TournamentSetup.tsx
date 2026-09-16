@@ -4,13 +4,14 @@ import { useState, useTransition } from "react";
 import { PlayerPicker, type PickedPlayer } from "@/components/PlayerPicker";
 import {
   addTournamentEntry,
+  addTournamentNames,
   deleteTournament,
   removeTournamentEntry,
   startTournament,
 } from "@/app/actions";
 import { matchCount, type TournamentFormat } from "@/lib/bracket";
 
-type Entry = { id: string; label: string; isMine: boolean };
+type Entry = { id: string; label: string; isMine: boolean; isGuest: boolean };
 
 /**
  * Entries, before the bracket exists.
@@ -37,6 +38,8 @@ export function TournamentSetup({
   const [error, setError] = useState<string | null>(null);
   const [player1, setPlayer1] = useState<PickedPlayer | null>(null);
   const [player2, setPlayer2] = useState<PickedPlayer | null>(null);
+  const [names, setNames] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   const doubles = mode === "doubles";
   const enough = entries.length >= (format === "double_elim" ? 3 : 2);
@@ -66,7 +69,50 @@ export function TournamentSetup({
 
   return (
     <div className="mt-5">
-      <div className="panel rounded-2xl p-4">
+      {isOrganiser && !doubles && (
+        <div className="panel rounded-2xl p-4">
+          <div className="text-sm font-bold">Type in the sheet</div>
+          <p className="mt-1 text-xs leading-relaxed text-text-dim">
+            One name per line. Names that match a club account are linked to it; anything else is
+            entered as a guest, so people who haven&rsquo;t signed up can still play.
+          </p>
+          <textarea
+            value={names}
+            onChange={(e) => setNames(e.target.value)}
+            rows={5}
+            placeholder={"Andrew Leung\nsam\nRiley from the gym"}
+            className="mt-3 w-full rounded-xl border border-border-strong bg-bg px-3 py-2.5 text-sm outline-none focus:border-nu"
+          />
+          <button
+            type="button"
+            disabled={isPending || !names.trim()}
+            onClick={() => {
+              setNotice(null);
+              const fd = new FormData();
+              fd.set("tournamentId", tournamentId);
+              fd.set("names", names);
+              run(async () => {
+                const r = await addTournamentNames(fd);
+                if (r.ok) {
+                  setNames("");
+                  setNotice(r.message ?? null);
+                }
+                return r;
+              });
+            }}
+            className="mt-2 w-full rounded-xl bg-nu py-3 text-sm font-bold text-white disabled:opacity-50"
+          >
+            {isPending ? "Adding…" : "Add these names"}
+          </button>
+          {notice && (
+            <p className="mt-2 rounded-xl border border-border bg-bg px-3 py-2 text-xs font-semibold">
+              {notice}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className={`panel rounded-2xl p-4 ${isOrganiser && !doubles ? "mt-3" : ""}`}>
         <div className="text-sm font-bold">
           {doubles ? "Add a pair" : "Add a player"}
         </div>
@@ -131,6 +177,14 @@ export function TournamentSetup({
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-bold">{e.label}</span>
+                {e.isGuest && (
+                  <span
+                    className="shrink-0 rounded-full border border-border-strong px-1.5 py-0.5 text-[10px] font-bold text-text-faint"
+                    title="No club account — their results won't affect any rating"
+                  >
+                    guest
+                  </span>
+                )}
                 {(isOrganiser || e.isMine) && (
                   <button
                     type="button"

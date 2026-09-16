@@ -201,6 +201,39 @@ async function NeedsYou() {
     supabase.rpc("doubles_pending"),
   ]);
 
+  // A tournament result is filed under the winner's name, because the rating
+  // row needs a reporter and the organiser who keyed it in may not have been
+  // playing. Naming the tournament is what stops that reading as someone
+  // reporting a match you don't remember them reporting.
+  const pendingIds = [
+    ...(pending ?? []).map((m) => m.id),
+    ...(doublesPending ?? []).map((m) => m.id),
+  ];
+  const { data: fromTournament } = pendingIds.length
+    ? await supabase
+        .from("tournament_matches")
+        .select("match_id, doubles_match_id, tournament_id")
+        .or(
+          `match_id.in.(${pendingIds.join(",")}),doubles_match_id.in.(${pendingIds.join(",")})`
+        )
+    : { data: null };
+  // A second query rather than an embed: the types here are hand-written and
+  // don't declare the relationship, so an embed can't be typed.
+  const { data: tournamentNames } = fromTournament?.length
+    ? await supabase
+        .from("tournaments")
+        .select("id, name")
+        .in("id", [...new Set(fromTournament.map((r) => r.tournament_id))])
+    : { data: null };
+  const nameById = new Map((tournamentNames ?? []).map((t) => [t.id, t.name]));
+  const tournamentFor = new Map<string, string>();
+  for (const row of fromTournament ?? []) {
+    const name = nameById.get(row.tournament_id);
+    if (!name) continue;
+    if (row.match_id) tournamentFor.set(row.match_id, name);
+    if (row.doubles_match_id) tournamentFor.set(row.doubles_match_id, name);
+  }
+
   const total =
     (challenges?.length ?? 0) + (pending?.length ?? 0) + (doublesPending?.length ?? 0);
   if (total === 0) return null;
@@ -273,6 +306,7 @@ async function NeedsYou() {
                 {m.games_won_b}
               </div>
               <div className="mt-0.5 text-xs text-text-dim">
+                {tournamentFor.has(m.id) ? `From ${tournamentFor.get(m.id)} · ` : ""}
                 Doubles —{" "}
                 {m.is_ranked
                   ? "confirming moves all four doubles ratings."
@@ -309,7 +343,11 @@ async function NeedsYou() {
                   {m.games_won_a}–{m.games_won_b}
                 </div>
                 <div className="mt-0.5 text-xs text-text-dim">
-                  {m.is_ranked ? "Ranked — confirming moves both ratings." : "Casual — no rating change."}
+                  {tournamentFor.has(m.id)
+                    ? `From ${tournamentFor.get(m.id)} — confirming moves both ratings.`
+                    : m.is_ranked
+                      ? "Ranked — confirming moves both ratings."
+                      : "Casual — no rating change."}
                 </div>
               </div>
             </div>

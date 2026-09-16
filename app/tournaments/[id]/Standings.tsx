@@ -14,7 +14,7 @@ export async function Standings({ tournamentId }: { tournamentId: string }) {
     supabase.rpc("tournament_standings", { p_tournament: tournamentId }),
     supabase
       .from("tournament_entries")
-      .select("id, player_1, player_2")
+      .select("id, player_1, player_2, guest_name")
       .eq("tournament_id", tournamentId),
   ]);
 
@@ -31,6 +31,7 @@ export async function Standings({ tournamentId }: { tournamentId: string }) {
   const label = (entryId: string) => {
     const e = entryList.find((x) => x.id === entryId);
     if (!e) return "Entry";
+    if (!e.player_1) return e.guest_name ?? "Guest";
     const one = players.get(e.player_1);
     const two = e.player_2 ? players.get(e.player_2) : null;
     const first = one ? displayName(one) : "Player";

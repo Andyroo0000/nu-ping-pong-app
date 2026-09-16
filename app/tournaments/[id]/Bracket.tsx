@@ -44,7 +44,7 @@ export async function Bracket({
       .order("slot", { ascending: true }),
     supabase
       .from("tournament_entries")
-      .select("id, player_1, player_2, seed")
+      .select("id, player_1, player_2, guest_name, seed")
       .eq("tournament_id", tournamentId),
   ]);
 
@@ -63,6 +63,7 @@ export async function Bracket({
     if (!entryId) return null;
     const e = entryById.get(entryId);
     if (!e) return null;
+    if (!e.player_1) return e.guest_name ?? "Guest";
     const one = players.get(e.player_1);
     const two = e.player_2 ? players.get(e.player_2) : null;
     const first = one ? displayName(one) : "Player";
@@ -122,7 +123,12 @@ export async function Bracket({
                     const a = label(m.entry_a);
                     const b = label(m.entry_b);
                     const ready = !!m.entry_a && !!m.entry_b;
-                    const canReport = m.status === "pending" && ready && (amIn(m.entry_a) || amIn(m.entry_b));
+                    const iAmIn = amIn(m.entry_a) || amIn(m.entry_b);
+                    // The organiser keys in scores for the whole sheet, not
+                    // just their own matches — one person running a club
+                    // night is the normal case.
+                    const canReport = m.status === "pending" && ready && (iAmIn || isOrganiser);
+                    const awaySide = amIn(m.entry_b) && !amIn(m.entry_a);
                     const aWon = m.winner_entry && m.winner_entry === m.entry_a;
                     const bWon = m.winner_entry && m.winner_entry === m.entry_b;
                     const mineHere = amIn(m.entry_a) || amIn(m.entry_b);
@@ -157,7 +163,7 @@ export async function Bracket({
                         )}
                         {m.status === "done" && isRanked && (m.match_id || m.doubles_match_id) && (
                           <p className="mt-2 text-[11px] text-text-faint">
-                            Counts for rating once the other side confirms it.
+                            Sent for confirmation — the rating moves when the loser agrees.
                           </p>
                         )}
 
@@ -166,13 +172,15 @@ export async function Bracket({
                             matchId={m.id}
                             tournamentId={tournamentId}
                             bestOf={bestOf}
-                            meFirst={amIn(m.entry_a)}
-                            myLabel={(amIn(m.entry_a) ? a : b) ?? "You"}
-                            theirLabel={(amIn(m.entry_a) ? b : a) ?? "Them"}
+                            // Whoever is entering puts their own score first;
+                            // the organiser reads the bracket top line first.
+                            // report_tournament_match applies the same rule.
+                            myLabel={(awaySide ? b : a) ?? "Top"}
+                            theirLabel={(awaySide ? a : b) ?? "Bottom"}
                           />
                         )}
 
-                        {!canReport && m.status === "pending" && ready && isOrganiser && (
+                        {m.status === "pending" && ready && isOrganiser && (
                           <ReportTournamentMatch
                             matchId={m.id}
                             tournamentId={tournamentId}

@@ -13,6 +13,7 @@ import { displayName } from "@/lib/names";
 import { TournamentSetup } from "./TournamentSetup";
 import { Bracket } from "./Bracket";
 import { Standings } from "./Standings";
+import { PublishResults } from "./PublishResults";
 
 type Params = Promise<{ id: string }>;
 
@@ -33,12 +34,13 @@ export default function TournamentPage({ params }: { params: Params }) {
   );
 }
 
-/** A tournament entry's name: one player, or a pair. */
+/** A tournament entry's name: one player, a pair, or a typed-in guest. */
 export type EntryPlayer = { id: string; username: string; full_name: string | null };
 export function entryLabel(
-  entry: { player_1: string; player_2: string | null },
+  entry: { player_1: string | null; player_2: string | null; guest_name: string | null },
   players: Map<string, EntryPlayer>
 ): string {
+  if (!entry.player_1) return entry.guest_name ?? "Guest";
   const one = players.get(entry.player_1);
   const two = entry.player_2 ? players.get(entry.player_2) : null;
   const first = one ? displayName(one) : "Player";
@@ -59,7 +61,7 @@ async function Body({ params }: { params: Params }) {
 
   const { data: entries } = await supabase
     .from("tournament_entries")
-    .select("id, player_1, player_2, seed, created_at")
+    .select("id, player_1, player_2, guest_name, seed, created_at")
     .eq("tournament_id", id)
     .order("seed", { ascending: true, nullsFirst: false });
 
@@ -115,10 +117,21 @@ async function Body({ params }: { params: Params }) {
               id: e.id,
               label: entryLabel(e, players),
               isMine: e.player_1 === user.id || e.player_2 === user.id,
+              isGuest: !e.player_1,
             }))}
           />
         ) : (
           <>
+            {/* The organiser's last step: turn the sheet into results the
+                players confirm. Only once the bracket is finished, so a
+                half-played tournament can't send half its results. */}
+            {isOrganiser && tournament.is_ranked && tournament.status === "complete" && (
+              <PublishResults
+                tournamentId={id}
+                publishedAt={tournament.results_published_at}
+              />
+            )}
+
             <Suspense fallback={<CardSkeleton className="mt-5" />}>
               <Bracket
                 tournamentId={id}

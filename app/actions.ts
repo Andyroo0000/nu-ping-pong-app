@@ -884,6 +884,76 @@ export async function addTournamentEntry(formData: FormData): Promise<ActionResu
   return { ok: true, message: "Entered." };
 }
 
+/**
+ * Add a whole sheet of names at once.
+ *
+ * Each line is matched against club profiles by name or username, and
+ * anything that doesn't match is entered as a guest. That's the point: the
+ * organiser shouldn't have to make everyone sign up before a bracket can
+ * exist, and at the first few sessions most of the room won't have.
+ *
+ * Matching is done here rather than in SQL because it needs to be forgiving —
+ * case, extra spaces, and "@username" as people write it — and because the
+ * club is small enough that one query over every profile is cheaper than a
+ * round trip per name.
+ */
+export async function addTournamentNames(formData: FormData): Promise<ActionResult> {
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  const raw = String(formData.get("names") ?? "");
+  if (!tournamentId) return { ok: false, error: "Missing tournament." };
+
+  const names = raw
+    .split(/[\n,]/)
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .slice(0, 64);
+  if (names.length === 0) return { ok: false, error: "Type some names, one per line." };
+
+  const supabase = await createClient();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, full_name")
+    .limit(1000);
+
+  const normalise = (s: string) => s.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, " ");
+  const byName = new Map<string, string>();
+  for (const p of profiles ?? []) {
+    byName.set(normalise(p.username), p.id);
+    if (p.full_name) byName.set(normalise(p.full_name), p.id);
+  }
+
+  const matched: string[] = [];
+  const guests: string[] = [];
+  const failed: string[] = [];
+
+  for (const name of names) {
+    const id = byName.get(normalise(name));
+    const { error } = id
+      ? await supabase.rpc("add_tournament_entry", {
+          p_tournament: tournamentId,
+          p_player_1: id,
+          p_player_2: null,
+        })
+      : await supabase.rpc("add_tournament_guest", { p_tournament: tournamentId, p_name: name });
+
+    if (error) failed.push(`${name} (${error.message.replace(/\.$/, "")})`);
+    else if (id) matched.push(name);
+    else guests.push(name);
+  }
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+
+  if (matched.length === 0 && guests.length === 0) {
+    return { ok: false, error: failed.join("; ") || "Nothing was added." };
+  }
+
+  const parts: string[] = [];
+  if (matched.length) parts.push(`${matched.length} matched to club accounts`);
+  if (guests.length) parts.push(`${guests.length} added as ${guests.length === 1 ? "a guest" : "guests"}`);
+  if (failed.length) parts.push(`skipped: ${failed.join("; ")}`);
+  return { ok: true, message: parts.join(" · ") };
+}
+
 export async function removeTournamentEntry(formData: FormData): Promise<ActionResult> {
   const entryId = String(formData.get("entryId") ?? "");
   const tournamentId = String(formData.get("tournamentId") ?? "");
@@ -919,7 +989,7 @@ export async function startTournament(formData: FormData): Promise<ActionResult>
 
   const { data: entries } = await supabase
     .from("tournament_entries")
-    .select("id, created_at, player_1, player_2")
+    .select("id, created_at, player_1, player_2, guest_name")
     .eq("tournament_id", tournamentId);
 
   if (!entries || entries.length < 2) {
@@ -931,10 +1001,9 @@ export async function startTournament(formData: FormData): Promise<ActionResult>
   const playerIds = [
     ...new Set(entries.flatMap((e) => [e.player_1, e.player_2].filter(Boolean) as string[])),
   ];
-  const { data: players } = await supabase
-    .from("profiles")
-    .select("id, rating, doubles_rating")
-    .in("id", playerIds);
+  const { data: players } = playerIds.length
+    ? await supabase.from("profiles").select("id, rating, doubles_rating").in("id", playerIds)
+    : { data: [] };
   const ratingOf = new Map(
     (players ?? []).map((p) => [
       p.id,
@@ -942,8 +1011,10 @@ export async function startTournament(formData: FormData): Promise<ActionResult>
     ])
   );
 
+  // A guest entry has no account and so no rating: seed them mid-field at
+  // the default rather than top or bottom, which is the least wrong guess.
   const strength = (e: (typeof entries)[number]) => {
-    const one = ratingOf.get(e.player_1) ?? 1000;
+    const one = (e.player_1 ? ratingOf.get(e.player_1) : null) ?? 1000;
     const two = e.player_2 ? ratingOf.get(e.player_2) : null;
     return two == null ? one : (one + two) / 2;
   };
@@ -1031,6 +1102,69 @@ export async function advanceTournamentMatch(formData: FormData): Promise<Action
 
   revalidatePath(`/tournaments/${tournamentId}`);
   return { ok: true, message: "Advanced without a score." };
+}
+
+/**
+ * Send the finished sheet out for confirmation.
+ *
+ * One pending match per member-versus-member result, then a notification to
+ * each person who has to confirm one. Guest results are skipped — there's no
+ * rating behind a typed-in name.
+ */
+export async function publishTournamentResults(formData: FormData): Promise<ActionResult> {
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!tournamentId) return { ok: false, error: "Missing tournament." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("publish_tournament_results", {
+    p_tournament: tournamentId,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const summary = data as
+    | { sent?: number; already_sent?: number; skipped_guests?: number }
+    | null;
+
+  const { data: tournament } = await supabase
+    .from("tournaments")
+    .select("name")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  const { data: confirmers } = await supabase.rpc("tournament_confirmers", {
+    p_tournament: tournamentId,
+  });
+
+  await Promise.all(
+    (confirmers ?? []).map((c) =>
+      notify(c.player_id, "confirmation", {
+        title: "Confirm a tournament result",
+        body: `Results from ${tournament?.name ?? "a tournament"} are in. Confirm yours so the ratings can move.`,
+        url: "/home",
+        tag: "confirmation",
+      })
+    )
+  );
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  revalidatePath("/home");
+
+  const sent = summary?.sent ?? 0;
+  const guests = summary?.skipped_guests ?? 0;
+  if (sent === 0) {
+    return {
+      ok: true,
+      message:
+        (summary?.already_sent ?? 0) > 0
+          ? "Already sent — nothing new to send."
+          : "Nothing to send: every result involved a guest entry.",
+    };
+  }
+  return {
+    ok: true,
+    message: `Sent ${sent} ${sent === 1 ? "result" : "results"} for confirmation${
+      guests > 0 ? `. ${guests} skipped — guests have no rating.` : "."
+    }`,
+  };
 }
 
 export async function deleteTournament(formData: FormData): Promise<ActionResult> {

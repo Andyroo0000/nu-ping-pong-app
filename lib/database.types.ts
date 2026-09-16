@@ -381,6 +381,7 @@ export interface Database {
           created_at: string;
           started_at: string | null;
           completed_at: string | null;
+          results_published_at: string | null;
         };
         Insert: never;
         Update: never;
@@ -390,8 +391,10 @@ export interface Database {
         Row: {
           id: string;
           tournament_id: string;
-          player_1: string;
+          /** Null for a guest entry — someone with no club account. */
+          player_1: string | null;
           player_2: string | null;
+          guest_name: string | null;
           seed: number | null;
           created_at: string;
         };
@@ -679,6 +682,15 @@ export interface Database {
         Returns: string;
       };
       remove_tournament_entry: { Args: { p_entry: string }; Returns: undefined };
+      add_tournament_guest: { Args: { p_tournament: string; p_name: string }; Returns: string };
+      publish_tournament_results: {
+        Args: { p_tournament: string };
+        Returns: { sent: number; already_sent: number; skipped_guests: number };
+      };
+      tournament_confirmers: {
+        Args: { p_tournament: string };
+        Returns: { player_id: string }[];
+      };
       start_tournament: {
         Args: { p_tournament: string; p_matches: unknown; p_seeds: string[] };
         Returns: number;
