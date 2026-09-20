@@ -31,6 +31,23 @@
 -- result with a null player the moment one could.
 -- ---------------------------------------------------------------------------
 
+-- This builds directly on 0022's guest_name column. Run out of order, the
+-- first thing you'd see is `column "guest_name" does not exist` from inside a
+-- check constraint, which says nothing about which migration is missing.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'tournament_entries'
+      and column_name = 'guest_name'
+  ) then
+    raise exception
+      'Run 0022_tournament_run_sheet.sql first — this migration extends the guest_name column it adds.';
+  end if;
+end;
+$$;
+
 alter table public.tournament_entries add column if not exists guest_name_2 text;
 
 alter table public.tournament_entries drop constraint if exists entry_is_member_or_guest;
