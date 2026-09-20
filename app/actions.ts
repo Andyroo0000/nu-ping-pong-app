@@ -884,30 +884,50 @@ export async function addTournamentEntry(formData: FormData): Promise<ActionResu
   return { ok: true, message: "Entered." };
 }
 
+/** One person on the sheet: a club account, or just a name. */
+type SheetPerson = { id: string; label: string } | { id: null; label: string };
+
+/**
+ * Fisher-Yates, with the shuffle done server-side so "random" can't be
+ * re-rolled by anyone watching the network tab until they like the draw.
+ */
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /**
  * Add a whole sheet of names at once.
  *
  * Each line is matched against club profiles by name or username, and
- * anything that doesn't match is entered as a guest. That's the point: the
- * organiser shouldn't have to make everyone sign up before a bracket can
+ * anything that doesn't match is entered under that name. That's the point:
+ * the organiser shouldn't have to make everyone sign up before a bracket can
  * exist, and at the first few sessions most of the room won't have.
  *
- * Matching is done here rather than in SQL because it needs to be forgiving —
- * case, extra spaces, and "@username" as people write it — and because the
- * club is small enough that one query over every profile is cheaper than a
- * round trip per name.
+ * In a doubles tournament the same list can be paired into teams — randomly,
+ * or in the order it was typed. A team may be two members, two names, or one
+ * of each, which is why the entry model has two independent slots.
+ *
+ * Matching happens here rather than in SQL because it needs to be forgiving —
+ * case, spacing, and "@username" as people write it — and because the club is
+ * small enough that one query over every profile beats a round trip per name.
  */
 export async function addTournamentNames(formData: FormData): Promise<ActionResult> {
   const tournamentId = String(formData.get("tournamentId") ?? "");
   const raw = String(formData.get("names") ?? "");
+  const pairing = String(formData.get("pairing") ?? "none");
   if (!tournamentId) return { ok: false, error: "Missing tournament." };
 
-  const names = raw
+  const lines = raw
     .split(/[\n,]/)
     .map((n) => n.trim())
     .filter(Boolean)
     .slice(0, 64);
-  if (names.length === 0) return { ok: false, error: "Type some names, one per line." };
+  if (lines.length === 0) return { ok: false, error: "Type some names, one per line." };
 
   const supabase = await createClient();
   const { data: profiles } = await supabase
@@ -922,35 +942,52 @@ export async function addTournamentNames(formData: FormData): Promise<ActionResu
     if (p.full_name) byName.set(normalise(p.full_name), p.id);
   }
 
-  const matched: string[] = [];
-  const guests: string[] = [];
-  const failed: string[] = [];
+  const people: SheetPerson[] = lines.map((label) => ({
+    id: byName.get(normalise(label)) ?? null,
+    label,
+  }));
+  const matchedCount = people.filter((p) => p.id).length;
 
-  for (const name of names) {
-    const id = byName.get(normalise(name));
-    const { error } = id
-      ? await supabase.rpc("add_tournament_entry", {
-          p_tournament: tournamentId,
-          p_player_1: id,
-          p_player_2: null,
-        })
-      : await supabase.rpc("add_tournament_guest", { p_tournament: tournamentId, p_name: name });
+  const slot = (person: SheetPerson, n: 1 | 2) =>
+    person.id ? { [`player_${n}`]: person.id } : { [`guest_${n}`]: person.label };
 
-    if (error) failed.push(`${name} (${error.message.replace(/\.$/, "")})`);
-    else if (id) matched.push(name);
-    else guests.push(name);
+  let entries: Record<string, string>[];
+  let leftOut: string | null = null;
+
+  if (pairing === "none") {
+    entries = people.map((p) => slot(p, 1));
+  } else {
+    const ordered = pairing === "random" ? shuffle(people) : people;
+    entries = [];
+    for (let i = 0; i + 1 < ordered.length; i += 2) {
+      entries.push({ ...slot(ordered[i], 1), ...slot(ordered[i + 1], 2) });
+    }
+    // An odd list can't be fully paired. Saying who was left out beats
+    // silently dropping the last name off the end of the sheet.
+    if (ordered.length % 2 === 1) leftOut = ordered[ordered.length - 1].label;
   }
+
+  if (entries.length === 0) {
+    return { ok: false, error: "That's not enough names to make a team." };
+  }
+
+  const { data: added, error } = await supabase.rpc("add_tournament_entries", {
+    p_tournament: tournamentId,
+    p_entries: entries,
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/tournaments/${tournamentId}`);
 
-  if (matched.length === 0 && guests.length === 0) {
-    return { ok: false, error: failed.join("; ") || "Nothing was added." };
-  }
-
-  const parts: string[] = [];
-  if (matched.length) parts.push(`${matched.length} matched to club accounts`);
-  if (guests.length) parts.push(`${guests.length} added as ${guests.length === 1 ? "a guest" : "guests"}`);
-  if (failed.length) parts.push(`skipped: ${failed.join("; ")}`);
+  const guestCount = people.length - matchedCount;
+  const parts: string[] = [
+    pairing === "none"
+      ? `Added ${added} ${added === 1 ? "entry" : "entries"}`
+      : `Made ${added} ${added === 1 ? "team" : "teams"}${pairing === "random" ? " at random" : ""}`,
+  ];
+  if (matchedCount) parts.push(`${matchedCount} matched to club accounts`);
+  if (guestCount) parts.push(`${guestCount} entered by name`);
+  if (leftOut) parts.push(`${leftOut} was left out — odd number of names`);
   return { ok: true, message: parts.join(" · ") };
 }
 

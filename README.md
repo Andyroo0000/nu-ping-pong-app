@@ -60,8 +60,10 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      tournaments: brackets, entries and results.
    - [`supabase/migrations/0022_tournament_run_sheet.sql`](supabase/migrations/0022_tournament_run_sheet.sql) —
      run a tournament off a sheet of names, and send the results at the end.
+   - [`supabase/migrations/0023_tournament_teams.sql`](supabase/migrations/0023_tournament_teams.sql) —
+     mixed teams, bulk entry, and random pairing.
 
-   0002 through 0022 are additive: safe to run on a database that already has
+   0002 through 0023 are additive: safe to run on a database that already has
    real players and matches in it. 0005 also creates the `avatars` storage
    bucket, so no manual setup is needed in the Storage dashboard.
 
@@ -91,7 +93,9 @@ climb the ladder, find an opponent, and chat with them. Next.js (App Router)
      exists (select 1 from pg_trigger where tgname = 'profiles_cleanup_before_delete')
    union all select '0021 tournaments', to_regclass('public.tournaments') is not null
    union all select '0022 tournament run sheet',
-     to_regproc('public.publish_tournament_results') is not null;
+     to_regproc('public.publish_tournament_results') is not null
+   union all select '0023 tournament teams',
+     to_regproc('public.add_tournament_entries') is not null;
    -- 0013 and 0014 only replace functions and move data, so check behaviour:
    --   select public.elo_k(1000, 30);  -- 40 after 0013, 32 before
    --   -- after 0014 this is empty; before it, it lists pairs with two threads
@@ -312,10 +316,17 @@ any `@northeastern.edu` email and a password.
   the results out at the end. Asking twenty people to each tap their way into
   a bracket first is how a tournament doesn't start.
 
-  - **Guest entries.** `player_1` is nullable and `guest_name` takes its
-    place, so people without a club account can play — which is most of the
-    room at the first few sessions. A guest carries no rating, so results
-    involving one never produce a rating row.
+  - **Guest entries.** An entry is two independent **slots**, and each slot is
+    either a club account or a typed-in name (`player_1`/`guest_name`,
+    `player_2`/`guest_name_2`). That covers a singles member, a singles guest,
+    a pair of members, a pair of guests, and — the case that forced the
+    change — a member partnered with a guest, which is most of what random
+    pairing produces from a half-signed-up room. A guest carries no rating, so
+    `publish_tournament_results()` skips any match with a guest in any slot.
+  - **Random teams** (migration 0023). Paste a list into a doubles tournament
+    and it shuffles into pairs. The shuffle is server-side, so "random" can't
+    be re-rolled from the network tab until the draw looks good. An odd list
+    names whoever was left out rather than silently dropping the last line.
   - **The organiser keys in any score**, not just their own matches.
   - **Results are published at the end.** `report_tournament_match` records
     the score and advances the bracket; `publish_tournament_results()` creates

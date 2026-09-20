@@ -37,14 +37,21 @@ export default function TournamentPage({ params }: { params: Params }) {
 /** A tournament entry's name: one player, a pair, or a typed-in guest. */
 export type EntryPlayer = { id: string; username: string; full_name: string | null };
 export function entryLabel(
-  entry: { player_1: string | null; player_2: string | null; guest_name: string | null },
+  entry: {
+    player_1: string | null;
+    player_2: string | null;
+    guest_name: string | null;
+    guest_name_2: string | null;
+  },
   players: Map<string, EntryPlayer>
 ): string {
-  if (!entry.player_1) return entry.guest_name ?? "Guest";
-  const one = players.get(entry.player_1);
+  // Each slot resolves on its own, so a member partnered with a guest reads
+  // the same way as any other pair.
+  const one = entry.player_1 ? players.get(entry.player_1) : null;
   const two = entry.player_2 ? players.get(entry.player_2) : null;
-  const first = one ? displayName(one) : "Player";
-  return two ? `${first} & ${displayName(two)}` : first;
+  const first = one ? displayName(one) : (entry.guest_name ?? "Player");
+  const second = two ? displayName(two) : entry.guest_name_2;
+  return second ? `${first} & ${second}` : first;
 }
 
 async function Body({ params }: { params: Params }) {
@@ -61,7 +68,7 @@ async function Body({ params }: { params: Params }) {
 
   const { data: entries } = await supabase
     .from("tournament_entries")
-    .select("id, player_1, player_2, guest_name, seed, created_at")
+    .select("id, player_1, player_2, guest_name, guest_name_2, seed, created_at")
     .eq("tournament_id", id)
     .order("seed", { ascending: true, nullsFirst: false });
 
@@ -117,7 +124,7 @@ async function Body({ params }: { params: Params }) {
               id: e.id,
               label: entryLabel(e, players),
               isMine: e.player_1 === user.id || e.player_2 === user.id,
-              isGuest: !e.player_1,
+              isGuest: !e.player_1 || (!!e.guest_name_2 && !e.player_2),
             }))}
           />
         ) : (

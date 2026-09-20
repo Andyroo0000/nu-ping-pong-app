@@ -44,7 +44,7 @@ export async function Bracket({
       .order("slot", { ascending: true }),
     supabase
       .from("tournament_entries")
-      .select("id, player_1, player_2, guest_name, seed")
+      .select("id, player_1, player_2, guest_name, guest_name_2, seed")
       .eq("tournament_id", tournamentId),
   ]);
 
@@ -63,11 +63,11 @@ export async function Bracket({
     if (!entryId) return null;
     const e = entryById.get(entryId);
     if (!e) return null;
-    if (!e.player_1) return e.guest_name ?? "Guest";
-    const one = players.get(e.player_1);
+    const one = e.player_1 ? players.get(e.player_1) : null;
     const two = e.player_2 ? players.get(e.player_2) : null;
-    const first = one ? displayName(one) : "Player";
-    return two ? `${first} & ${displayName(two)}` : first;
+    const first = one ? displayName(one) : (e.guest_name ?? "Player");
+    const second = two ? displayName(two) : e.guest_name_2;
+    return second ? `${first} & ${second}` : first;
   };
   const amIn = (entryId: string | null) => {
     if (!entryId) return false;

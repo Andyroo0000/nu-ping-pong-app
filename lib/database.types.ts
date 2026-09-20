@@ -394,7 +394,10 @@ export interface Database {
           /** Null for a guest entry — someone with no club account. */
           player_1: string | null;
           player_2: string | null;
+          /** Slot-one name when there's no account behind it. */
           guest_name: string | null;
+          /** Slot-two name — lets a member partner a guest. */
+          guest_name_2: string | null;
           seed: number | null;
           created_at: string;
         };
@@ -683,6 +686,10 @@ export interface Database {
       };
       remove_tournament_entry: { Args: { p_entry: string }; Returns: undefined };
       add_tournament_guest: { Args: { p_tournament: string; p_name: string }; Returns: string };
+      add_tournament_entries: {
+        Args: { p_tournament: string; p_entries: unknown };
+        Returns: number;
+      };
       publish_tournament_results: {
         Args: { p_tournament: string };
         Returns: { sent: number; already_sent: number; skipped_guests: number };

@@ -52,6 +52,22 @@ export function TournamentSetup({
     });
   }
 
+  function addNames(pairing: "none" | "random" | "order") {
+    setNotice(null);
+    const fd = new FormData();
+    fd.set("tournamentId", tournamentId);
+    fd.set("names", names);
+    fd.set("pairing", pairing);
+    run(async () => {
+      const r = await addTournamentNames(fd);
+      if (r.ok) {
+        setNames("");
+        setNotice(r.message ?? null);
+      }
+      return r;
+    });
+  }
+
   function addEntry(p1: string, p2?: string | null) {
     const fd = new FormData();
     fd.set("tournamentId", tournamentId);
@@ -69,12 +85,13 @@ export function TournamentSetup({
 
   return (
     <div className="mt-5">
-      {isOrganiser && !doubles && (
+      {isOrganiser && (
         <div className="panel rounded-2xl p-4">
           <div className="text-sm font-bold">Type in the sheet</div>
           <p className="mt-1 text-xs leading-relaxed text-text-dim">
-            One name per line. Names that match a club account are linked to it; anything else is
-            entered as a guest, so people who haven&rsquo;t signed up can still play.
+            One name per line. Names that match a club account are linked to it, and anything else
+            is entered under that name — so people who haven&rsquo;t signed up can still play.
+            {doubles && " A team can be two members, two names, or one of each."}
           </p>
           <textarea
             value={names}
@@ -83,27 +100,41 @@ export function TournamentSetup({
             placeholder={"Andrew Leung\nsam\nRiley from the gym"}
             className="mt-3 w-full rounded-xl border border-border-strong bg-bg px-3 py-2.5 text-sm outline-none focus:border-nu"
           />
-          <button
-            type="button"
-            disabled={isPending || !names.trim()}
-            onClick={() => {
-              setNotice(null);
-              const fd = new FormData();
-              fd.set("tournamentId", tournamentId);
-              fd.set("names", names);
-              run(async () => {
-                const r = await addTournamentNames(fd);
-                if (r.ok) {
-                  setNames("");
-                  setNotice(r.message ?? null);
-                }
-                return r;
-              });
-            }}
-            className="mt-2 w-full rounded-xl bg-nu py-3 text-sm font-bold text-white disabled:opacity-50"
-          >
-            {isPending ? "Adding…" : "Add these names"}
-          </button>
+
+          {doubles ? (
+            <div className="mt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={isPending || !names.trim()}
+                onClick={() => addNames("random")}
+                className="w-full rounded-xl bg-nu py-3 text-sm font-bold text-white transition-colors hover:bg-nu-deep disabled:opacity-50"
+              >
+                {isPending ? "Drawing…" : "Pair them randomly"}
+              </button>
+              <button
+                type="button"
+                disabled={isPending || !names.trim()}
+                onClick={() => addNames("order")}
+                className="w-full rounded-xl border border-border-strong py-3 text-[13px] font-bold text-text-dim disabled:opacity-50"
+              >
+                Pair in the order listed
+              </button>
+              <p className="text-xs text-text-faint">
+                Random pairing takes the whole list and shuffles it into teams. With an odd number
+                of names, the last one out is named so you can slot them in yourself.
+              </p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={isPending || !names.trim()}
+              onClick={() => addNames("none")}
+              className="mt-2 w-full rounded-xl bg-nu py-3 text-sm font-bold text-white transition-colors hover:bg-nu-deep disabled:opacity-50"
+            >
+              {isPending ? "Adding…" : "Add these names"}
+            </button>
+          )}
+
           {notice && (
             <p className="mt-2 rounded-xl border border-border bg-bg px-3 py-2 text-xs font-semibold">
               {notice}
@@ -112,13 +143,15 @@ export function TournamentSetup({
         </div>
       )}
 
-      <div className={`panel rounded-2xl p-4 ${isOrganiser && !doubles ? "mt-3" : ""}`}>
+      <div className={`panel rounded-2xl p-4 ${isOrganiser ? "mt-3" : ""}`}>
         <div className="text-sm font-bold">
           {doubles ? "Add a pair" : "Add a player"}
         </div>
         <p className="mt-1 text-xs text-text-dim">
           {isOrganiser
-            ? "You can add anyone in the club."
+            ? doubles
+              ? "For a pair you want to choose yourself, rather than leave to the draw."
+              : "You can add anyone in the club."
             : "You can add yourself. Only the organiser can enter other people."}
         </p>
         <div className="mt-3 flex flex-col gap-3">
